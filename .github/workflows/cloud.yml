@@ -31,6 +31,9 @@ on:
         required: false
         default: 'doubao-seedream-3-0-t2i-250415'
 
+permissions:
+  contents: write   # 抓到的 API 元数据与生成的视觉资源需要提交回仓库
+
 jobs:
   run:
     runs-on: ubuntu-latest
