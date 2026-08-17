@@ -1,0 +1,147 @@
+# 在线预览：把服务跑在 Actions runner 上，用 Cloudflare 免费快速隧道给出一个可直接访问的 HTTPS 地址。
+#
+# 为什么这么做：开发沙箱的网络出口白名单不含用户服务器与国内 API，无法直接部署；
+# 而 runner 有完整公网出口。cloudflared quick tunnel 不需要任何账号或 token，
+# 因此这条通路零凭据、零用户操作。HTTPS 也让手机端「按住说话」的麦克风可用（http 下浏览器会禁用）。
+#
+# 注意：本 workflow 不接收任何敏感参数。仓库是公开的，inputs 会明文进日志。
+name: 在线预览（临时地址）
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: '保持在线多少分钟（上限 350，GitHub 单任务最长 6 小时）'
+        required: false
+        default: '340'
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装服务端依赖
+        run: cd server && npm install --omit=dev
+
+      - name: 下载 cloudflared
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /usr/local/bin/cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /usr/local/bin/cloudflared
+          cloudflared --version
+
+      # 先起隧道再起服务：隧道不要求后端已就绪，这样能先拿到地址，
+      # 再把地址作为 PUBLIC_BASE_URL 启动服务（二维码与素材 URL 都取自它）
+      - name: 建立隧道并取地址
+        id: tunnel
+        run: |
+          set -euo pipefail
+          nohup cloudflared tunnel --url http://localhost:8620 --no-autoupdate \
+            > /tmp/tunnel.log 2>&1 &
+          URL=""
+          for i in $(seq 1 60); do
+            sleep 2
+            URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' /tmp/tunnel.log | head -1 || true)
+            [ -n "$URL" ] && break
+          done
+          if [ -z "$URL" ]; then
+            echo "::error::60 秒内未能取得隧道地址"
+            echo "--- cloudflared 日志 ---"; cat /tmp/tunnel.log
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "隧道地址：$URL"
+
+      - name: 启动服务
+        env:
+          URL: ${{ steps.tunnel.outputs.url }}
+        run: |
+          set -euo pipefail
+          cd server
+          # PUBLIC_BASE_URL 必须是隧道地址：sessions.js 用它生成二维码 joinUrl，
+          # assets.js 用它生成素材签名 URL。若留 localhost，手机扫码会打不开。
+          PORT=8620 PUBLIC_BASE_URL="$URL" DATA_DIR=./data-preview UPLOAD_DIR=./uploads-preview \
+            nohup node src/index.js > /tmp/lebo.log 2>&1 &
+          for i in $(seq 1 20); do
+            sleep 2
+            curl -sf --max-time 5 http://127.0.0.1:8620/health >/dev/null 2>&1 && break
+          done
+          curl -sf --max-time 5 http://127.0.0.1:8620/health || {
+            echo "::error::服务未能启动"; cat /tmp/lebo.log; exit 1; }
+          echo "本机健康检查通过"
+
+      - name: 通过隧道自检
+        id: check
+        env:
+          URL: ${{ steps.tunnel.outputs.url }}
+        run: |
+          set -euo pipefail
+          # 隧道刚建好可能需要几秒才可达，重试若干次
+          HEALTH=""
+          for i in $(seq 1 15); do
+            HEALTH=$(curl -sf --max-time 10 "$URL/health" 2>/dev/null || true)
+            echo "$HEALTH" | grep -q '"ok":true' && break
+            sleep 4
+          done
+          echo "$HEALTH" | grep -q '"ok":true' || {
+            echo "::error::隧道地址不可达：$URL"
+            echo "--- 隧道日志 ---"; tail -30 /tmp/tunnel.log
+            echo "--- 服务日志 ---"; tail -30 /tmp/lebo.log
+            exit 1; }
+          TVCODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/tv/")
+          MCODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL/m/")
+          echo "健康检查：$HEALTH"
+          echo "电视端 /tv/ → $TVCODE   手机端 /m/ → $MCODE"
+          [ "$TVCODE" = "200" ] && [ "$MCODE" = "200" ] || { echo "::error::页面不可达"; exit 1; }
+          {
+            echo "## 乐播·龙虾脑 在线预览已就绪 ✅"
+            echo ""
+            echo "**电视端**（在电视浏览器 / 电脑浏览器打开，会显示二维码）"
+            echo ""
+            echo "\`$URL/tv/\`"
+            echo ""
+            echo "**手机端**（用手机扫电视上的二维码，或直接打开这个地址）"
+            echo ""
+            echo "\`$URL/m/\`"
+            echo ""
+            echo "运行模式：\`$HEALTH\`"
+            echo ""
+            echo "> 这是临时预览地址，本次在线约 ${{ github.event.inputs.minutes }} 分钟，到点自动关闭。"
+            echo "> 未配置任何 API Key，以 mock 演示模式运行：扫码连接、下指令、看电影、"
+            echo "> 上传文件讲解、打断提问、说“停”，完整链路都能走通。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 保持在线
+        env:
+          URL: ${{ steps.tunnel.outputs.url }}
+          MINUTES: ${{ github.event.inputs.minutes }}
+        run: |
+          set -uo pipefail
+          MIN=${MINUTES:-340}
+          [ "$MIN" -gt 350 ] 2>/dev/null && MIN=350
+          echo "预览地址：$URL/tv/   与   $URL/m/"
+          echo "将保持在线约 ${MIN} 分钟"
+          FAILS=0
+          END=$(( $(date +%s) + MIN * 60 ))
+          while [ "$(date +%s)" -lt "$END" ]; do
+            sleep 60
+            if curl -sf --max-time 15 "$URL/health" >/dev/null 2>&1; then
+              FAILS=0
+            else
+              FAILS=$((FAILS + 1))
+              echo "探活失败 $FAILS/3"
+              if [ "$FAILS" -ge 3 ]; then
+                echo "::warning::隧道连续 3 次不可达，提前结束"
+                tail -20 /tmp/tunnel.log; tail -20 /tmp/lebo.log
+                exit 0
+              fi
+            fi
+          done
+          echo "预览时间到，正常结束"
