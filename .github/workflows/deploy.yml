@@ -1,0 +1,163 @@
+# 部署乐播·龙虾脑到你的服务器。
+# 为什么用 GitHub Actions：开发沙箱的网络出口白名单不含你的服务器与国内 API，
+# 而 Actions runner 有完整公网权限，可以充当跳板完成部署。
+#
+# 使用前需在 仓库 Settings → Secrets and variables → Actions 添加：
+#   必填：SERVER_HOST(如 42.193.216.98)、SERVER_PASSWORD
+#   选填：SERVER_USER(默认 root)、DEPLOY_DOMAIN(有域名才能用麦克风)
+#   选填(接真实AI)：ARK_API_KEY、VOLC_TTS_APP_ID、VOLC_TTS_ACCESS_TOKEN、
+#                   WUYING_ACCESS_KEY_ID、WUYING_ACCESS_KEY_SECRET、WUYING_DESKTOP_ID
+name: 部署到服务器
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: '要部署的分支'
+        required: false
+        default: 'claude/lobster-2kl0yz'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查必填 Secrets
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          PASS: ${{ secrets.SERVER_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$HOST" ] && missing="$missing SERVER_HOST"
+          [ -z "$PASS" ] && missing="$missing SERVER_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::缺少必填 Secrets:$missing"
+            echo "请到 Settings → Secrets and variables → Actions 添加后重跑。"
+            exit 1
+          fi
+          echo "Secrets 检查通过"
+
+      - name: 安装 sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: 探测服务器可达性
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          if timeout 15 bash -c "cat < /dev/null > /dev/tcp/$HOST/22" 2>/dev/null; then
+            echo "服务器 SSH 端口可达"
+          else
+            echo "::error::连不上 $HOST:22。检查服务器是否开机、云安全组/防火墙是否放行 22 端口。"
+            exit 1
+          fi
+
+      - name: 拉起部署（安装依赖 + 启动服务 + 配 nginx）
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USER: ${{ secrets.SERVER_USER || 'root' }}
+          DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+          BRANCH: ${{ github.event.inputs.branch }}
+          REPO_URL: https://github.com/${{ github.repository }}.git
+        run: |
+          set -euo pipefail
+          SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20"
+          $SSH "$SSH_USER@$HOST" bash -s <<REMOTE
+          set -e
+          export DEBIAN_FRONTEND=noninteractive
+          command -v git >/dev/null 2>&1 || { apt-get update -y >/dev/null 2>&1; apt-get install -y git >/dev/null 2>&1; }
+          if [ -d /opt/lebo/.git ]; then
+            cd /opt/lebo && git fetch origin "$BRANCH" && git checkout -B "$BRANCH" "origin/$BRANCH" && git reset --hard "origin/$BRANCH"
+          else
+            rm -rf /opt/lebo
+            git clone -b "$BRANCH" "$REPO_URL" /opt/lebo
+          fi
+          cd /opt/lebo
+          DOMAIN="$DOMAIN" bash deploy/oneclick.sh
+          REMOTE
+
+      - name: 写入模型/云桌面密钥（不回显）
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USER: ${{ secrets.SERVER_USER || 'root' }}
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          VOLC_TTS_APP_ID: ${{ secrets.VOLC_TTS_APP_ID }}
+          VOLC_TTS_ACCESS_TOKEN: ${{ secrets.VOLC_TTS_ACCESS_TOKEN }}
+          WUYING_ACCESS_KEY_ID: ${{ secrets.WUYING_ACCESS_KEY_ID }}
+          WUYING_ACCESS_KEY_SECRET: ${{ secrets.WUYING_ACCESS_KEY_SECRET }}
+          WUYING_DESKTOP_ID: ${{ secrets.WUYING_DESKTOP_ID }}
+        run: |
+          set -euo pipefail
+          # 逐项写入：只覆盖已提供的项，其余保留服务器上原值。密钥经 base64 走 stdin，不进日志。
+          gen() {
+            for kv in "ARK_API_KEY=$ARK_API_KEY" "VOLC_TTS_APP_ID=$VOLC_TTS_APP_ID" \
+                      "VOLC_TTS_ACCESS_TOKEN=$VOLC_TTS_ACCESS_TOKEN" \
+                      "WUYING_ACCESS_KEY_ID=$WUYING_ACCESS_KEY_ID" \
+                      "WUYING_ACCESS_KEY_SECRET=$WUYING_ACCESS_KEY_SECRET" \
+                      "WUYING_DESKTOP_ID=$WUYING_DESKTOP_ID"; do
+              k="${kv%%=*}"; v="${kv#*=}"
+              [ -n "$v" ] && printf '%s=%s\n' "$k" "$v"
+            done
+          }
+          PAYLOAD=$(gen | base64 -w0)
+          if [ -z "$PAYLOAD" ]; then
+            echo "未提供任何模型/云桌面密钥，跳过（服务将以 mock 演示模式运行）"
+            exit 0
+          fi
+          SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          # base64 作为位置参数传入：heredoc 已占用 stdin，不能再用管道喂数据
+          $SSH "$SSH_USER@$HOST" bash -s "$PAYLOAD" <<'REMOTE'
+          set -e
+          TMP=$(mktemp); echo "$1" | base64 -d > "$TMP"
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            if grep -q "^$k=" /opt/lebo/.env 2>/dev/null; then
+              # 用 | 作分隔符并转义，避免密钥含 / & 破坏 sed
+              esc=$(printf '%s' "$v" | sed -e 's/[|&\\]/\\&/g')
+              sed -i "s|^$k=.*|$k=$esc|" /opt/lebo/.env
+            else
+              printf '%s=%s\n' "$k" "$v" >> /opt/lebo/.env
+            fi
+          done < "$TMP"
+          rm -f "$TMP"
+          chmod 600 /opt/lebo/.env
+          systemctl restart lebo
+          echo "密钥已写入并重启服务"
+          REMOTE
+
+      - name: 验证并输出访问地址
+        env:
+          SSHPASS: ${{ secrets.SERVER_PASSWORD }}
+          HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USER: ${{ secrets.SERVER_USER || 'root' }}
+          DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+        run: |
+          set -euo pipefail
+          SSH="sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          sleep 3
+          HEALTH=$($SSH "$SSH_USER@$HOST" 'curl -s --max-time 10 http://127.0.0.1:8620/health || echo FAILED')
+          echo "健康检查：$HEALTH"
+          if echo "$HEALTH" | grep -q '"ok":true'; then
+            BASE="http://$HOST"
+            [ -n "$DOMAIN" ] && BASE="https://$DOMAIN"
+            {
+              echo "## 部署成功 ✅"
+              echo ""
+              echo "**电视端**（电视浏览器打开，会显示二维码）："
+              echo "\`$BASE/tv/\`"
+              echo ""
+              echo "**手机端 H5**（扫码进入，或手机浏览器直接打开）："
+              echo "\`$BASE/m/\`"
+              echo ""
+              echo "运行模式：\`$HEALTH\`"
+              if [ -z "$DOMAIN" ]; then
+                echo ""
+                echo "> ⚠️ 当前是 IP 访问，浏览器会禁用麦克风（按住说话不可用），可先用打字发指令。"
+                echo "> 配置 \`DEPLOY_DOMAIN\` secret 并把域名解析到本机后重跑，即可启用 HTTPS 与语音。"
+              fi
+            } >> $GITHUB_STEP_SUMMARY
+          else
+            echo "::error::服务未正常启动。到服务器执行 journalctl -u lebo -n 50 查看原因。"
+            $SSH "$SSH_USER@$HOST" 'journalctl -u lebo -n 30 --no-pager' || true
+            exit 1
+          fi

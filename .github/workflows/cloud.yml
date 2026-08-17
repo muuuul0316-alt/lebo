@@ -1,0 +1,104 @@
+# 云资源操作：驱动阿里云无影云桌面、生成 Seedream 品牌视觉。
+# 这些任务需要访问国内 API（阿里云 ECD / 火山方舟），开发沙箱的网络白名单不含它们，
+# 因此放到有完整公网出口的 Actions runner 上执行。
+#
+# 需要的 Secrets（在 Settings → Secrets and variables → Actions 添加）：
+#   云桌面：WUYING_ACCESS_KEY_ID、WUYING_ACCESS_KEY_SECRET、WUYING_DESKTOP_ID、WUYING_REGION(选填,默认cn-shenzhen)
+#   生图  ：ARK_API_KEY
+name: 云桌面与生图
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '要做什么'
+        required: true
+        type: choice
+        default: 'desktop-status'
+        options:
+          - desktop-status
+          - desktop-start
+          - desktop-run
+          - gen-assets
+      command:
+        description: 'desktop-run 时执行的 PowerShell 命令'
+        required: false
+        default: 'Write-Output "云桌面在线: $env:COMPUTERNAME"; Get-Date'
+      seedream_model:
+        description: 'gen-assets 时用的 Seedream 模型名'
+        required: false
+        default: 'doubao-seedream-3-0-t2i-250415'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ---------- 云桌面 ----------
+      - name: 云桌面操作
+        if: startsWith(github.event.inputs.action, 'desktop-')
+        env:
+          WUYING_ACCESS_KEY_ID: ${{ secrets.WUYING_ACCESS_KEY_ID }}
+          WUYING_ACCESS_KEY_SECRET: ${{ secrets.WUYING_ACCESS_KEY_SECRET }}
+          WUYING_DESKTOP_ID: ${{ secrets.WUYING_DESKTOP_ID }}
+          WUYING_REGION: ${{ secrets.WUYING_REGION || 'cn-shenzhen' }}
+          ACT: ${{ github.event.inputs.action }}
+          CMD: ${{ github.event.inputs.command }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WUYING_ACCESS_KEY_ID:-}" ] || [ -z "${WUYING_DESKTOP_ID:-}" ]; then
+            echo "::error::缺少 Secrets：WUYING_ACCESS_KEY_ID / WUYING_ACCESS_KEY_SECRET / WUYING_DESKTOP_ID"
+            exit 1
+          fi
+          case "$ACT" in
+            desktop-status) node tools/cloud-cli.mjs status | tee /tmp/out.txt ;;
+            desktop-start)  node tools/cloud-cli.mjs start  | tee /tmp/out.txt ;;
+            desktop-run)    node tools/cloud-cli.mjs run "$CMD" | tee /tmp/out.txt ;;
+          esac
+          {
+            echo "## 云桌面：$ACT"
+            echo '```'
+            cat /tmp/out.txt
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      # ---------- Seedream 生图 ----------
+      - name: 生成品牌视觉（Seedream）
+        if: github.event.inputs.action == 'gen-assets'
+        env:
+          ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+          SEEDREAM_MODEL: ${{ github.event.inputs.seedream_model }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ARK_API_KEY:-}" ]; then
+            echo "::error::缺少 Secret：ARK_API_KEY（火山方舟）"
+            exit 1
+          fi
+          node tools/gen-assets.mjs 2>&1 | tee /tmp/gen.txt
+          echo "## Seedream 生图结果" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/gen.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 提交生成的视觉资源
+        if: github.event.inputs.action == 'gen-assets'
+        run: |
+          set -euo pipefail
+          # 生成的图片默认被 .gitignore 忽略，这里显式加入以便留存与部署
+          if git status --porcelain --ignored tv/assets phone/assets | grep -qE '\.(png|jpg|webp)$'; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -f tv/assets/*.png phone/assets/*.png 2>/dev/null || true
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: Seedream 生成品牌视觉资源"
+              git push
+              echo "已提交视觉资源到仓库" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "没有生成任何图片（检查上一步的错误输出）" >> $GITHUB_STEP_SUMMARY
+          fi
