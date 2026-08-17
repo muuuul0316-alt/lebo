@@ -5,7 +5,8 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/lebo/server
-EnvironmentFile=/opt/lebo/.env
+# .env 由应用自身读取（server/src/config.js 会加载 /opt/lebo/.env），
+# 不用 systemd EnvironmentFile，避免密钥含 # ! 等字符时解析失败。
 ExecStart=/usr/bin/node src/index.js
 Restart=always
 RestartSec=3
