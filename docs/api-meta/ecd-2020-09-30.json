@@ -1,0 +1,1763 @@
+{
+ "product": "ecd",
+ "version": "2020-09-30",
+ "endpoint_pattern": "ecd.{region}.aliyuncs.com",
+ "style": "RPC",
+ "total_apis": 250,
+ "picked_count": 13,
+ "apis": {
+  "CreateDesktops": {
+   "summary": "创建一台或多台云电脑。创建时若传入用户信息，可直接完成云电脑的分配。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "GroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑池ID。",
+     "example": "dg-boyczi8enfyc5****"
+    },
+    {
+     "name": "BundleId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑模板ID。未选择模版ID时，可以通过填充必备字段完成创建。",
+     "example": "b-je9hani001wfn****"
+    },
+    {
+     "name": "DesktopName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑名称。命名规则如下：\n\n- 不超过64个字符。\n- 必须以大小字母或中文开头，不能以`http://`和`https://`开头。\n- 可以包含中文、英文、数字、半角冒号（:）、下划线（_）、点号（.）或者短划线（-）。",
+     "example": "DemoComputer01"
+    },
+    {
+     "name": "UserName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 此参数不开放使用。",
+     "example": "username"
+    },
+    {
+     "name": "VpcId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 此参数不开放使用。",
+     "example": "vpc-uf6w8u60n8xbkg5el****"
+    },
+    {
+     "name": "Amount",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "创建的云电脑数量。取值范围为1~300，默认值为1。",
+     "example": "1"
+    },
+    {
+     "name": "DirectoryId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 此参数不开放使用。",
+     "example": "cn-hangzhou+dir-300943****"
+    },
+    {
+     "name": "OfficeSiteId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络ID。",
+     "example": "cn-hangzhou+dir-387822****"
+    },
+    {
+     "name": "PolicyGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "策略ID。",
+     "example": "system-all-enabled-policy"
+    },
+    {
+     "name": "ChargeType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑的计费方式。",
+     "example": "PrePaid"
+    },
+    {
+     "name": "Period",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "购买资源的时长。单位由`PeriodUnit`指定。当参数`ChargeType`取值为`PrePaid`时才生效，且为必选值。\n\n- 如果`PeriodUnit`为`Month`，该参数的取值范围：\n\n     - 1\n    -  2\n    - 3\n    - 6\n\n- 如果`PeriodUnit`为`Year`，该参数的取值范围：\n\n    - 1\n    - 2\n    - 3\n    ",
+     "example": "1"
+    },
+    {
+     "name": "PeriodUnit",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "包年包月计费方式的时长单位。",
+     "example": "Month"
+    },
+    {
+     "name": "AutoPay",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否自动支付。",
+     "example": "false"
+    },
+    {
+     "name": "AutoRenew",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否自动续费。当参数`ChargeType`取值为`PrePaid`时才生效。    ",
+     "example": "false"
+    },
+    {
+     "name": "PromotionId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "优惠活动ID。",
+     "example": "23141"
+    },
+    {
+     "name": "UserAssignMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑分配模式。\n\n> 如果未设置`EndUserId`，创建的云电脑不会分配给用户。",
+     "example": "ALL"
+    },
+    {
+     "name": "Hostname",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "自定义设置云电脑的主机名称。仅支持设置AD办公网络下，操作系统类型是Windows的云电脑。\n\n主机名称的命名规则如下：\n\n- 长度为2~15个字符。\n- 支持大小写字母、数字或者短划线（-）。不能以短划线开头或者结尾，不能连续使用短划线，不能只使用数字。\n\n创建多台云电脑时，可以使用`name_prefix[begin_number,bits]name_suffix`的命名格式为多台云电脑统一命",
+     "example": "testhost"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "为云电脑添加的授权用户ID列表。可设置1~100个。",
+     "example": "123456789"
+    },
+    {
+     "name": "Tag",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "标签。"
+    },
+    {
+     "name": "DesktopNameSuffix",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "批量创建云电脑时，云电脑名称是否自动增加后缀。",
+     "example": "false"
+    },
+    {
+     "name": "DesktopNameModel",
+     "in": "query",
+     "required": false,
+     "type": "object",
+     "description": "控制桌面名称的格式"
+    },
+    {
+     "name": "VolumeEncryptionEnabled",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否开启磁盘加密。",
+     "example": "false"
+    },
+    {
+     "name": "VolumeEncryptionKey",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "开启磁盘加密的情况下使用的KMS的密钥ID。可通过[ListKeys](~~28951~~)接口获取。",
+     "example": "08c33a6f-4e0a-4a1b-a3fa-7ddfa1d4****"
+    },
+    {
+     "name": "DesktopMemberIp",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "指定云电脑私网IP。",
+     "example": "10.0.0.1"
+    },
+    {
+     "name": "UserCommands",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "用户自定义命令脚本数据。\n"
+    },
+    {
+     "name": "BundleModels",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑模板列表。"
+    },
+    {
+     "name": "DesktopTimers",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑定时任务详情。该参数在逐步废弃中，请优先使用TImerGroupId参数进行设置。"
+    },
+    {
+     "name": "SubnetId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "子网ID。",
+     "example": "vsw-bp1m*****"
+    },
+    {
+     "name": "MonthDesktopSetting",
+     "in": "query",
+     "required": false,
+     "type": "object",
+     "description": "按月小时包购买参数。"
+    },
+    {
+     "name": "SnapshotPolicyId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "无影自动快照策略ID。",
+     "example": "sp-28mp6my0l6zow****"
+    },
+    {
+     "name": "ResourceGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "无影资源组ID。",
+     "example": "rg-3mtuc28rx95lx****"
+    },
+    {
+     "name": "DesktopAttachment",
+     "in": "query",
+     "required": false,
+     "type": "object",
+     "description": "无模板方式入参，在传入BundleID参数时该参数无效。"
+    },
+    {
+     "name": "TimerGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "定时任务组ID。",
+     "example": "ccg-0caoeogrk9m5****"
+    },
+    {
+     "name": "SavingPlanId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 此字段暂不对外开放使用。",
+     "example": "spn-26c1b7bcrjcI****"
+    },
+    {
+     "name": "ResellerOwnerUid",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "转售模式的资源归属用户ID，非转售模式无需填写该参数。",
+     "example": "1828644634819902"
+    },
+    {
+     "name": "ExtendInfo",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "JSON字符串扩展信息。仅内部客户可用。",
+     "example": "{}"
+    },
+    {
+     "name": "AppRuleId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "应用管控策略ID",
+     "example": "bwr-245d4e0e6b7d42f5afa97eb3fbc7e488"
+    },
+    {
+     "name": "QosRuleId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "公网限速规则ID。",
+     "example": "qos-52fqmg6kvyro7zu4l"
+    },
+    {
+     "name": "ChannelCookie",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 此字段暂不对外开放使用。",
+     "example": "PBKB1QbqEl2tslEuU6gRrLxvCFBU2M%2FVD0Eru6Oo%2FI9LTU3XQhvq3PGMWarE%2BPJdkNvCqT3blqlRSthNy4A%2BJQ%3D%3D"
+    },
+    {
+     "name": "PurchaseOptions",
+     "in": "query",
+     "required": false,
+     "type": "object",
+     "description": "特定购买类型的额外参数。"
+    },
+    {
+     "name": "OuPath",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "OU路径，指定后，云电脑将加入AD对应的OU下",
+     "example": "test.com/wuyingtest/computers"
+    },
+    {
+     "name": "SubPayType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑购买方式。可选值为：\n\n- prePaid：按月购买不限时长。\n- postPaid：按量购买。\n- monthPackage：按月时长包。\n- jvsAgentPackage：jvs agent时长包。",
+     "example": "monthPackage"
+    }
+   ]
+  },
+  "DeleteDesktops": {
+   "summary": "释放一台或多台按量付费云电脑或到期的包年包月云电脑。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云电脑ID列表。可设置1~100个。"
+    },
+    {
+     "name": "ResellerOwnerUid",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "转售模式的资源归属用户ID，非转售模式无需填写该参数。",
+     "example": "1422724566551XXX"
+    }
+   ]
+  },
+  "DescribeDesktopTypes": {
+   "summary": "查询云电脑规格的详细信息。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "BusinessChannel",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "业务渠道, 取值：\nEnterprise：企业版\nBusiness：商业版",
+     "example": "Enterprise"
+    },
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~DescribeRegions~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopTypeId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "规格ID。\n\n> 当`InstanceTypeFamily`和`DesktopTypeId`参数的取值均为空时，将查询云电脑所有规格的信息。",
+     "example": "ecd.graphics.xlarge"
+    },
+    {
+     "name": "InstanceTypeFamily",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "规格族名称。\n\n> 当`InstanceTypeFamily`和`DesktopTypeId`参数的取值均为空时，将查询云电脑所有规格的信息。",
+     "example": "ecd.graphics"
+    },
+    {
+     "name": "CpuCount",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "vCPU数量。",
+     "example": "2"
+    },
+    {
+     "name": "MemorySize",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "内存大小。单位为MiB。",
+     "example": "4096"
+    },
+    {
+     "name": "GpuCount",
+     "in": "query",
+     "required": false,
+     "type": "number",
+     "description": "GPU核数。",
+     "example": "1"
+    },
+    {
+     "name": "DesktopIdForModify",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "变配时传入需要变配的云电脑ID，返回值会增加规格与云电脑之间是否兼容的信息。",
+     "example": "ecd-gx2x1dhsmucyy****"
+    },
+    {
+     "name": "OrderType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "订单类型。",
+     "example": "DOWNGRADE"
+    },
+    {
+     "name": "AppliedScope",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "规格适用范围。默认值：`Public`。",
+     "example": "Public"
+    },
+    {
+     "name": "DesktopGroupIdForModify",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "变配时传入需要变配的共享型云电脑ID，返回值会增加规格与共享型云电脑之间是否兼容的信息。",
+     "example": "dg-abcdefg****"
+    },
+    {
+     "name": "GpuDriverType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "GPU驱动类型。",
+     "example": "A10"
+    },
+    {
+     "name": "OrderBy",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "排序字段，若不指定则按照创建时间倒序排列。",
+     "example": "Memory"
+    },
+    {
+     "name": "SortType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "排序方式。",
+     "example": "ASC"
+    },
+    {
+     "name": "Scope",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "规格的售卖方式。",
+     "example": "FastBuy"
+    },
+    {
+     "name": "DesktopTypeIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "规格ID列表。"
+    },
+    {
+     "name": "SupportMinSessionCount",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "查询规则支持的多会话数量。",
+     "example": "2"
+    },
+    {
+     "name": "ZoneId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "> 该参数未对外开放使用。",
+     "example": "cn-hangzhou-j"
+    },
+    {
+     "name": "GpuMemory",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "显存大小。对于GPU型云电脑，该返回值有实际意义。单位：MB。",
+     "example": "2048"
+    },
+    {
+     "name": "ScopeSet",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "适用范围列表。"
+    },
+    {
+     "name": "OfficeSiteId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "共享型云电脑所属的办公网络ID。",
+     "example": "cn-hangzhou+os-c5cy7q578s8jc****"
+    },
+    {
+     "name": "DesktopScenario",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑的使用场景。",
+     "example": "office"
+    }
+   ]
+  },
+  "DescribeDesktops": {
+   "summary": "查询云电脑的详细信息。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "BusinessChannel",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "业务渠道, 取值：\nEnterprise：企业版\nBusiness：商业版",
+     "example": "Enterprise"
+    },
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~DescribeRegions~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "GroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑池ID。",
+     "example": "dg-boyczi8enfyc5****"
+    },
+    {
+     "name": "DesktopStatus",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑状态。",
+     "example": "Running"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页行数。\n\n- 最大值：100\n- 默认值：10",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "下一个查询开始的Token，NextToken为空表示没有下一个。",
+     "example": "caeba0bbb2be03f84eb48b699f0a4883"
+    },
+    {
+     "name": "UserName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用户名称。",
+     "example": "Alice"
+    },
+    {
+     "name": "DesktopName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑名称。",
+     "example": "DemoComputer01"
+    },
+    {
+     "name": "DirectoryId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "目录ID。同办公网络ID。",
+     "example": "cn-hangzhou+dir-363353****"
+    },
+    {
+     "name": "OfficeSiteId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络ID。",
+     "example": "cn-hangzhou+dir-363353****"
+    },
+    {
+     "name": "OfficeSiteName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络名称。",
+     "example": "default"
+    },
+    {
+     "name": "PolicyGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑策略ID。",
+     "example": "system-all-enabled-policy"
+    },
+    {
+     "name": "ChargeType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑的计费方式。",
+     "example": "PostPaid"
+    },
+    {
+     "name": "ExpiredTime",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "包年包月云电脑的到期时间。\n时间格式为 ISO 8601 标准的 UTC 时间：yyyy-MM-ddTHH:mm:ssZ。",
+     "example": "2022-12-31T15:59:59Z"
+    },
+    {
+     "name": "ProtocolType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "协议类型。\n",
+     "example": "ASP"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑ID。可设置1~100个。",
+     "example": "ecd-gx2x1dhsmucyy****"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑的授权用户列表。可设置1~100个。\n\n> 在同一时段内，只有一个用户可以连接和使用该云电脑。",
+     "example": "alice"
+    },
+    {
+     "name": "ExcludedEndUserId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "要排除的云电脑授权用户列表。可设置1~100个。",
+     "example": "andy"
+    },
+    {
+     "name": "FilterDesktopGroup",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否排除池化云电脑（云电脑池中的云电脑）。",
+     "example": "false"
+    },
+    {
+     "name": "ManagementFlag",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "管理标识。",
+     "example": "NoFlag"
+    },
+    {
+     "name": "QueryFotaUpdate",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否查询云电脑镜像版本信息。",
+     "example": "false"
+    },
+    {
+     "name": "Tag",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "标签列表。一个标签由一对键值对组成，用于标记资源。您可以使用标签来分组管理云电脑，便于搜索和批量操作，详情参见[使用标签管理云电脑](~~203781~~)。"
+    },
+    {
+     "name": "SnapshotPolicyId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "快照策略ID。",
+     "example": "sp-hb12mclyne09xw***"
+    },
+    {
+     "name": "OnlyDesktopGroup",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否只查询池化云电脑（云电脑池中的云电脑）。",
+     "example": "true"
+    },
+    {
+     "name": "DesktopGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑池ID。如果传入了`DesktopId`，则忽略该`DesktopGroupId`；如果`DesktopId`为空，则会根据`DesktopGroupId`去获取该云电脑池内所有云电脑的`DesktopId`。",
+     "example": "dg-2i8qxpv6t1a03****"
+    },
+    {
+     "name": "OsTypes",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "操作系统类型。"
+    },
+    {
+     "name": "DesktopType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑规格。您可以调用[DescribeDesktopTypes](~~188882~~)查询云电脑支持的规格ID。",
+     "example": "eds.general.2c8g"
+    },
+    {
+     "name": "ImageId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "镜像ID列表。"
+    },
+    {
+     "name": "DesktopStatusList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑状态列表。"
+    },
+    {
+     "name": "GpuInstanceGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "弹性显卡池ID。",
+     "example": "gp-0bm2iz1v6m6nx****"
+    },
+    {
+     "name": "QosRuleId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "公网限速规则ID。",
+     "example": "qos-5605u0gelk200****"
+    },
+    {
+     "name": "SubPayType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑购买方式。",
+     "example": "monthPackage"
+    },
+    {
+     "name": "ResourceGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "企业资源组ID。",
+     "example": "rg-4hsvzbbmqdzu3s****"
+    },
+    {
+     "name": "FillResourceGroup",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否查询企业资源组信息。",
+     "example": "true"
+    },
+    {
+     "name": "PageNumber",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时，当前页的页码。",
+     "example": "1"
+    },
+    {
+     "name": "PageSize",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时，每页最大行数。",
+     "example": "10"
+    },
+    {
+     "name": "MultiResource",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否有多个资源。",
+     "example": "false"
+    },
+    {
+     "name": "IncludeAutoSnapshotPolicy",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否在返回结果中包含自动快照策略信息。"
+    }
+   ]
+  },
+  "DescribeInvocations": {
+   "summary": "用于查询云助手脚本的执行列表和状态。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~DescribeRegions~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "InvokeId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "脚本进程执行ID。取自[RunCommand](~~RunCommand~~)的返回参数。",
+     "example": "t-hz0jdfwd9f****"
+    },
+    {
+     "name": "CommandType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "运维脚本的命令类型。",
+     "example": "RunPowerShellScript"
+    },
+    {
+     "name": "InvokeStatus",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "脚本执行的总执行状态。总执行状态取决于创建执行中的一台或多台云电脑的共同执行状态。",
+     "example": "Finished"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑ID。如果指定了云电脑，则查询该云电脑所有的脚本执行记录。",
+     "example": "ecd-7w78ozhjcwa3u****"
+    },
+    {
+     "name": "IncludeOutput",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否在结果中返回脚本运行的输出信息。",
+     "example": "false"
+    },
+    {
+     "name": "ContentEncoding",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "返回数据的编码方式。",
+     "example": "PlainText"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页行数。    \n\n- 最大值：50。\n- 默认值：10。",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "查询凭证（Token），取值为上一次API调用返回的NextToken参数值。",
+     "example": "AAAAAV3MpHK1AP0pfERHZN5pu6nmB7qrRFJ8vmttjxPL****"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用户ID。",
+     "example": "alice"
+    },
+    {
+     "name": "DesktopIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云电脑ID列表。\n\n> `DesktopId`参数即将弃用，请使用当前参数传递云电脑ID列表信息。"
+    },
+    {
+     "name": "IncludeInvokeDesktops",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "远程命令在多台云电脑上执行的情况下，是否返回所有云电脑的执行结果。"
+    }
+   ]
+  },
+  "DescribeOfficeSites": {
+   "summary": "查询办公网络的所有属性，包括ID、名称、状态、创建时间等。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "OfficeSiteType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络的账号体系类型。",
+     "example": "SIMPLE"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页行数。    \n\n- 最大值：100。    \n- 默认值：10。",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "下一个查询开始的Token。",
+     "example": "caeba0bbb2be03f84eb48b699f0a4883"
+    },
+    {
+     "name": "OfficeSiteId",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "办公网络ID。可设置1~100个。",
+     "example": "cn-hangzhou+dir-363353****"
+    },
+    {
+     "name": "Status",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络状态。",
+     "example": "REGISTERED"
+    },
+    {
+     "name": "SecurityProtection",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "办公网络安全防护配置。",
+     "example": "SASE"
+    },
+    {
+     "name": "VpcId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "共享型云电脑的办公网络所在的VPC ID。\n\n> 该参数暂未开放使用。",
+     "example": "vpc-uf6w8u60n8xbkg5el****"
+    },
+    {
+     "name": "AccountType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "账号类型",
+     "example": "SIMPLE"
+    }
+   ]
+  },
+  "DescribeUserConnectionRecords": {
+   "summary": "查询云电脑池的授权用户连接池化云电脑的具体记录。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopGroupId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "云电脑池ID。",
+     "example": "dg-2i8qxpv6t1a03****"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "授权用户ID。",
+     "example": "alice"
+    },
+    {
+     "name": "EndUserType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用户账号体系类型。",
+     "example": "SIMPLE"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页行数。\n最大值：100。\n默认值：10。",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "下一个查询开始的Token，NextToken为空表示没有下一个。",
+     "example": "caeba0bbb2be03f84eb48b699f0a4883"
+    },
+    {
+     "name": "ConnectStartTimeFrom",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以开始连接时间作为筛选条件的最小值。格式为Unix时间戳。单位为毫秒。",
+     "example": "1631239200000"
+    },
+    {
+     "name": "ConnectStartTimeTo",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以开始连接时间作为筛选条件的最大值。格式为Unix时间戳。单位为毫秒。",
+     "example": "1631241000000"
+    },
+    {
+     "name": "ConnectEndTimeFrom",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以终止连接时间作为筛选条件的最小值。格式为Unix时间戳。单位为毫秒。",
+     "example": "1631266200000"
+    },
+    {
+     "name": "ConnectEndTimeTo",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以终止连接时间作为筛选条件的最大值。格式为Unix时间戳。单位为毫秒。",
+     "example": "1631268000000"
+    },
+    {
+     "name": "ConnectDurationFrom",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以连接时长作为筛选条件的最小值。",
+     "example": "100"
+    },
+    {
+     "name": "ConnectDurationTo",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "以连接时长作为筛选条件的最大值。",
+     "example": "100"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑ID。",
+     "example": "ecd-138dsptkrt00u****"
+    }
+   ]
+  },
+  "GetConnectionTicket": {
+   "summary": "获取云电脑连接凭证。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑授权用户的用户名。必须传入云电脑现有的授权用户才能成功生成凭证。",
+     "example": "alice"
+    },
+    {
+     "name": "Password",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑授权用户的密码。",
+     "example": "Ab123456"
+    },
+    {
+     "name": "TaskId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑连接任务ID。",
+     "example": "2afbad19-778a-4fc5-9674-1f19c638****"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "需生成连接凭证的云电脑ID。必须传入该字段才能成功生成凭证。",
+     "example": "ecd-gx2x1dhsmucyy****"
+    },
+    {
+     "name": "Uuid",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "客户端唯一标识。若使用无影客户端，可在客户端登录界面的**关于**对话框中查看该参数。",
+     "example": "28c80e90-f71e-4c23-93d6-1225329cf949"
+    },
+    {
+     "name": "CommandContent",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "当前参数可以配置自定义用户态应用，当成功获取凭证后，自动执行应用。\n\n- appPath：String类型，应用启动文件路径，例如：`\"C:\\\\Program Files (x86)\\\\000\\\\000.exe\"`，注意路径分隔符要用双斜杠（\\\\\\）。\n- appParameter：String类型，应用启动参数，例如：`\"meetingid 000 meetingname aaa\"`，注意参数与",
+     "example": "{\n      \"startApplication\": {\n            \"startApplicationList\": [\n                  {\n                        \"sessionName\": \"\",\n                        \"appList\": [\n                              {\n                                    \"appPath\": \"C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe\",\n                                    \"appParameter\": \"www.example.com www.example1.com\"\n                              }\n                        ]\n                  }\n            ]\n      }\n}"
+    }
+   ]
+  },
+  "ModifyDesktopSpec": {
+   "summary": "变更云电脑的实例规格，并扩容云电脑的系统盘和数据盘。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域 ID。您可以调用 [DescribeRegions](~~196646~~) 查询最新的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云电脑 ID。",
+     "example": "ecd-4543qyik164a4****"
+    },
+    {
+     "name": "DesktopType",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "目标实例规格。您可以调用 [DescribeDesktopTypes](~~188882~~) 查询云电脑支持的实例规格。",
+     "example": "eds.general.2c8g"
+    },
+    {
+     "name": "RootDiskSizeGib",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "变更后的系统盘大小。单位：GiB。取值范围：80~500 GiB，且必须是 10 的整数倍。",
+     "example": "80"
+    },
+    {
+     "name": "UserDiskSizeGib",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "变更后的数据盘大小。单位：GiB。\n\n- 非图形型云电脑的数据盘大小取值范围：20~1020 GiB，且必须是 10 的整数倍。\n- 图形型云电脑的数据盘大小取值范围：40~1020 GiB，且必须是 10 的整数倍。",
+     "example": "100"
+    },
+    {
+     "name": "AutoPay",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否自动付费。\n\n默认值：true。取值范围：\n\n- true：自动付费。请确保阿里云账号余额充足，否则订单会产生异常。\n- false：只生成订单，不自动付费。",
+     "example": "false"
+    },
+    {
+     "name": "UserDiskPerformanceLevel",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "数据盘的性能等级（PL）。默认值：PL0。\n\n取值范围：\n\n- PL0\n- PL1\n- PL2\n- PL3",
+     "example": "PL0"
+    },
+    {
+     "name": "PromotionId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "促销活动 ID。",
+     "example": "500033080110596"
+    },
+    {
+     "name": "ResourceSpecs",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "资源规格模板数组。"
+    },
+    {
+     "name": "ResourceType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "资源类型。\n\n> 非包年包月云电脑可不传该参数。",
+     "example": "DesktopMonthPackage"
+    },
+    {
+     "name": "ResellerOwnerUid",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "转售模式的资源归属用户ID，非转售模式无需填写该参数。",
+     "example": "1422724566551XXX"
+    }
+   ]
+  },
+  "RebootDesktops": {
+   "summary": "重启一台或者多台云电脑。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~DescribeRegions~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云电脑ID。可设置1~100个。",
+     "example": "ecd-gx2x1dhsmucyy****"
+    },
+    {
+     "name": "OsUpdate",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否安装系统补丁"
+    },
+    {
+     "name": "PatchId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "",
+     "example": "KB5082063"
+    },
+    {
+     "name": "CreateSnapshot",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": ""
+    }
+   ]
+  },
+  "RunCommand": {
+   "summary": "在一台或多台Windows操作系统的云电脑中执行一段PowerShell或者Bat类型的脚本。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "Type",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "运维脚本的语言类型。",
+     "example": "RunPowerShellScript"
+    },
+    {
+     "name": "CommandContent",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "脚本的明文内容或者Base64编码后的内容。  \n脚本内容Base64编码后不能超过16 KB。\n\n> 若为Base64编码后的脚本内容，则参数ContentEncoding必须配置为Base64。",
+     "example": "ipconfig"
+    },
+    {
+     "name": "Timeout",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "执行脚本的超时时间，单位为秒。默认值：300。  \n当因为进程原因、缺失模块、缺失云助手客户端等原因无法运行脚本时，会出现超时现象。超时后，会强制终止脚本进程。",
+     "example": "3600"
+    },
+    {
+     "name": "ContentEncoding",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "脚本内容的编码方式。\n\n> 若传入的值不在枚举值范围内，则一律作为传入`PlainText`处理。",
+     "example": "Base64"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云电脑ID列表。N的取值范围：1\\~50。  \n如果指定了多台云电脑，只要有一台云电脑可以成功执行脚本，该API就能调用成功。当指定的多台云电脑均无法执行脚本时，您需要重新设置该参数。"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "终端用户的ID，若此参数不为空，则会以终端用户的权限执行命令。\n\n> 该用户需要在云电脑上存在会话记录（云电脑开机后有过登录及连接行为，且连接时未被其他用户抢占）。Linux云电脑不支持该参数。",
+     "example": "alice"
+    },
+    {
+     "name": "CommandRole",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "命令在云电脑内执行时使用的角色。",
+     "example": "system"
+    }
+   ]
+  },
+  "StartDesktops": {
+   "summary": "启动一台或者多台已停止的云电脑。接口调用成功后，云电脑进入运行中状态。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云电脑ID。可设置1~100个。",
+     "example": "ecd-7w78ozhjcwa3u****"
+    }
+   ]
+  },
+  "StopDesktops": {
+   "summary": "停止一台或者多台运行中的云电脑。接口调用成功后，云电脑进入已停止状态。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "RegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以调用[DescribeRegions](~~196646~~)获取无影云电脑支持的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "StoppedMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "关机后的计费模式。",
+     "example": "StopCharging"
+    },
+    {
+     "name": "DesktopId",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云电脑ID。可设置1~100个。",
+     "example": "ecd-7w78ozhjcwa3u****"
+    },
+    {
+     "name": "OsUpdate",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "在更新已就绪的前提下，是否执行补丁更新。为true表示执行补丁更新。",
+     "example": "false"
+    },
+    {
+     "name": "PatchId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "",
+     "example": "KB5082063"
+    },
+    {
+     "name": "CreateSnapshot",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "",
+     "example": "false"
+    }
+   ]
+  }
+ },
+ "all_api_names": [
+  "ActivateOfficeSite",
+  "AddDevices",
+  "AddFilePermission",
+  "AddUserToDesktopGroup",
+  "ApplyAutoSnapshotPolicy",
+  "ApplyCoordinatePrivilege",
+  "ApplyCoordinationForMonitoring",
+  "ApproveFotaUpdate",
+  "AssociateNetworkPackage",
+  "AttachCen",
+  "AttachEndUser",
+  "BatchModifyEntitlement",
+  "BindConfigGroup",
+  "CancelAutoSnapshotPolicy",
+  "CancelCdsFileShareLink",
+  "CancelCoordinationForMonitoring",
+  "CancelCopyImage",
+  "CloneCenterPolicy",
+  "ClonePolicyGroup",
+  "CompleteCdsFile",
+  "ConfigADConnectorTrust",
+  "ConfigADConnectorUser",
+  "CopyCdsFile",
+  "CopyImage",
+  "CreateADConnectorDirectory",
+  "CreateADConnectorOfficeSite",
+  "CreateAndBindNasFileSystem",
+  "CreateAutoSnapshotPolicy",
+  "CreateBandwidthResourcePackages",
+  "CreateBundle",
+  "CreateCdsFile",
+  "CreateCdsFileShareLink",
+  "CreateCenterPolicy",
+  "CreateCloudDriveGroup",
+  "CreateCloudDriveService",
+  "CreateCloudDriveUsers",
+  "CreateConfigGroup",
+  "CreateDesktopGroup",
+  "CreateDesktops",
+  "CreateDiskEncryptionService",
+  "CreateDrive",
+  "CreateEcdReportTask",
+  "CreateImage",
+  "CreateNASFileSystem",
+  "CreateNetworkPackage",
+  "CreateOfficeSiteAccelerator",
+  "CreatePolicyGroup",
+  "CreateQosRule",
+  "CreateRAMDirectory",
+  "CreateSimpleOfficeSite",
+  "CreateSnapshot",
+  "CreateTemplate",
+  "CreateVirtualBridge",
+  "DeleteAutoSnapshotPolicy",
+  "DeleteBundles",
+  "DeleteCdsFile",
+  "DeleteCenterPolicy",
+  "DeleteCloudDriveGroups",
+  "DeleteCloudDriveUsers",
+  "DeleteConfigGroup",
+  "DeleteDesktopGroup",
+  "DeleteDesktops",
+  "DeleteDevices",
+  "DeleteDirectories",
+  "DeleteDrive",
+  "DeleteImages",
+  "DeleteNASFileSystems",
+  "DeleteNetworkPackages",
+  "DeleteOfficeSiteAccelerator",
+  "DeleteOfficeSites",
+  "DeletePolicyGroups",
+  "DeleteQosRules",
+  "DeleteSnapshot",
+  "DeleteTemplates",
+  "DeleteVirtualBridge",
+  "DeleteVirtualMFADevice",
+  "DescribeAclEntries",
+  "DescribeAutoSnapshotPolicy",
+  "DescribeBundles",
+  "DescribeCdsFileShareLinks",
+  "DescribeCens",
+  "DescribeCenterPolicyList",
+  "DescribeClientEvents",
+  "DescribeCloudDiskGroupDrives",
+  "DescribeCloudDiskGroups",
+  "DescribeCloudDriveGroups",
+  "DescribeCloudDrivePermissions",
+  "DescribeCloudDriveUsers",
+  "DescribeConfigGroup",
+  "DescribeCustomizedListHeaders",
+  "DescribeDesktopGroupSessions",
+  "DescribeDesktopGroups",
+  "DescribeDesktopInfo",
+  "DescribeDesktopMetadata",
+  "DescribeDesktopSessions",
+  "DescribeDesktopTypes",
+  "DescribeDesktops",
+  "DescribeDesktopsInGroup",
+  "DescribeDevices",
+  "DescribeDirectories",
+  "DescribeDrives",
+  "DescribeEcdReportTasks",
+  "DescribeFlowMetric",
+  "DescribeFotaPendingDesktops",
+  "DescribeFotaTasks",
+  "DescribeGlobalDesktopRecords",
+  "DescribeGlobalTimerBatches",
+  "DescribeGlobalTimerRecords",
+  "DescribeGuestApplications",
+  "DescribeImageModifiedRecords",
+  "DescribeImagePermission",
+  "DescribeImages",
+  "DescribeInvocations",
+  "DescribeKmsKeys",
+  "DescribeModificationPrice",
+  "DescribeNASFileSystems",
+  "DescribeNetworkPackages",
+  "DescribeOfficeSiteBridgeInfo",
+  "DescribeOfficeSites",
+  "DescribeOnlineUserCount",
+  "DescribePolicyGroups",
+  "DescribePrice",
+  "DescribeQosRules",
+  "DescribeRecordFile",
+  "DescribeRecordings",
+  "DescribeRefundPrice",
+  "DescribeRegions",
+  "DescribeRenewalPrice",
+  "DescribeResourceByCenterPolicyId",
+  "DescribeSessionStatistic",
+  "DescribeSnapshots",
+  "DescribeTemplates",
+  "DescribeTimerGroup",
+  "DescribeUserConnectionRecords",
+  "DescribeUsersInGroup",
+  "DescribeUsersPassword",
+  "DescribeVirtualMFADevices",
+  "DescribeZones",
+  "DetachCen",
+  "DetachEndUser",
+  "DisableDesktopsInGroup",
+  "DisconnectDesktopSessions",
+  "DissociateNetworkPackage",
+  "DownloadCdsFile",
+  "ExportClientEvents",
+  "ExportDesktopGroupInfo",
+  "ExportDesktopListInfo",
+  "GetAsyncTask",
+  "GetConnectionTicket",
+  "GetCoordinateTicket",
+  "GetDesktopGroupDetail",
+  "GetOfficeSiteSsoStatus",
+  "GetSpMetadata",
+  "HibernateDesktops",
+  "ListCdsFiles",
+  "ListDirectoryUsers",
+  "ListFilePermission",
+  "ListInstalledApps",
+  "ListOfficeSiteOverview",
+  "ListOfficeSiteUsers",
+  "ListTagResources",
+  "ListTransferFileDownloadUrl",
+  "ListTransferFiles",
+  "ListUserAdOrganizationUnits",
+  "ListVirtualBridges",
+  "LockVirtualMFADevice",
+  "MigrateDesktops",
+  "MigrateImageProtocol",
+  "ModifyADConnectorDirectory",
+  "ModifyADConnectorOfficeSite",
+  "ModifyAclEntries",
+  "ModifyAutoSnapshotPolicy",
+  "ModifyBundle",
+  "ModifyCdsFile",
+  "ModifyCdsFileShareLink",
+  "ModifyCenterPolicy",
+  "ModifyCloudDriveGroups",
+  "ModifyCloudDrivePermission",
+  "ModifyCloudDriveUsers",
+  "ModifyConfigGroup",
+  "ModifyCustomizedListHeaders",
+  "ModifyDesktopChargeType",
+  "ModifyDesktopGroup",
+  "ModifyDesktopHostName",
+  "ModifyDesktopName",
+  "ModifyDesktopSpec",
+  "ModifyDesktopTimer",
+  "ModifyDesktopsPolicyGroup",
+  "ModifyDiskSpec",
+  "ModifyEntitlement",
+  "ModifyImageAttribute",
+  "ModifyImagePermission",
+  "ModifyNASDefaultMountTarget",
+  "ModifyNetworkPackageBandwidth",
+  "ModifyNetworkPackageEnabled",
+  "ModifyOfficeSiteAccelerator",
+  "ModifyOfficeSiteAttribute",
+  "ModifyOfficeSiteBridgeInfo",
+  "ModifyOfficeSiteCrossDesktopAccess",
+  "ModifyOfficeSiteDnsInfo",
+  "ModifyOfficeSiteMfaEnabled",
+  "ModifyPolicyGroup",
+  "ModifyQosEntries",
+  "ModifyQosRule",
+  "ModifyResourceCenterPolicy",
+  "ModifyTemplate",
+  "ModifyTemplateBaseInfo",
+  "ModifyTimerGroup",
+  "ModifyUserEntitlement",
+  "ModifyUserToDesktopGroup",
+  "ModifyVirtualBridgeLevel",
+  "ModifyVirtualBridgeStatus",
+  "MoveCdsFile",
+  "QueryHistoryActiveUserCount",
+  "QueryHistoryAvgMetricList",
+  "QueryHistoryMetricDistribution",
+  "QueryHistoryUsageDurationRank",
+  "RebootDesktops",
+  "RebuildDesktops",
+  "RemoveFilePermission",
+  "RemoveUserFromDesktopGroup",
+  "RenewDesktopGroup",
+  "RenewDesktops",
+  "RenewNetworkPackages",
+  "RenewVirtualBridge",
+  "ResetDesktops",
+  "ResetNASDefaultMountTarget",
+  "ResetSnapshot",
+  "RevokeCoordinatePrivilege",
+  "RunCommand",
+  "SendVerifyCode",
+  "SetDesktopGroupScaleTimer",
+  "SetDesktopGroupTimer",
+  "SetDesktopGroupTimerStatus",
+  "SetDesktopMaintenance",
+  "SetDirectorySsoStatus",
+  "SetIdpMetadata",
+  "SetOfficeSiteSsoStatus",
+  "StartDesktops",
+  "StopDesktops",
+  "StopInvocation",
+  "TagResources",
+  "TransferTaskApprovalCallback",
+  "UnbindConfigGroup",
+  "UnlockVirtualMFADevice",
+  "UntagResources",
+  "UpdateFotaTask",
+  "UploadImage",
+  "VerifyCen",
+  "WakeupDesktops"
+ ]
+}

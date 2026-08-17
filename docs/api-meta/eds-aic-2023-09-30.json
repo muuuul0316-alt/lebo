@@ -1,0 +1,1189 @@
+{
+ "product": "eds-aic",
+ "version": "2023-09-30",
+ "endpoint_pattern": "eds-aic.{region}.aliyuncs.com",
+ "style": "RPC",
+ "total_apis": 120,
+ "picked_count": 14,
+ "apis": {
+  "BatchGetAcpConnectionTicket": {
+   "summary": "批量获取连接凭证。本接口会异步进行 Ticket 的生成，绝大多数可第一次直接从Response中直接拿到Ticket，部分情况需要根据Response中的TaskId再调用本接口进行轮询是否生成。",
+   "method": "get",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "InstanceGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组ID。",
+     "example": "ag-25nt4kk9whjh****"
+    },
+    {
+     "name": "InstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云手机实例ID列表，可设置 1~100 个。"
+    },
+    {
+     "name": "EndUserId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "已分配的用户ID，如果不传，则会使用后台分配的系统用户获取Ticket。\n\n<props=\"china\">\n本参数的使用方法因云手机产品版本和实例串流模式而异：\n\n- 云手机实例版或云手机矩阵版（抢占模式）：只能通过同一个`EnduserId`获取`Ticket`。\n- 云手机矩阵版（协同模式）：可通过传入不同的`EnduserId`来为不同的用户（至多5个）同时获取`Ticket`并串流。每次只",
+     "example": "user"
+    },
+    {
+     "name": "ConnectionMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "建连模式。",
+     "example": "custom"
+    },
+    {
+     "name": "InstanceTasks",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例连接任务。用于查询Ticket获取任务是否完成。"
+    },
+    {
+     "name": "Ports",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": ""
+    }
+   ]
+  },
+  "CreateAndroidInstanceGroup": {
+   "summary": "创建按量付费或包年包月的云手机实例组。一个实例组可以管理多个实例。可以将具有相同功能定位的实例编入同一个实例组，以便于统一管理。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "BizRegionId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "地域ID。可以通过调用[DescribeRegions](~~DescribeRegions~~)查询云手机支持购买的地域列表。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "InstanceGroupName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组名称。\n\n> 实例组名称长度不超过30个字符；请以大/小写字母或中文开头，不能以`http://`和`https://`开头，仅支持中文、英文、数字、半角冒号（:）、下划线（_）、点号（.）或者连字符（-）。",
+     "example": "Cloud phoneA"
+    },
+    {
+     "name": "NumberOfInstances",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "实例组中的实例数量。最大值为100。",
+     "example": "1"
+    },
+    {
+     "name": "ChargeType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "计费类型。",
+     "example": "PostPaid"
+    },
+    {
+     "name": "Period",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "购买资源的时长，单位由PeriodUnit指定。",
+     "example": "1"
+    },
+    {
+     "name": "PeriodUnit",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "购买资源的时长单位。",
+     "example": "Month"
+    },
+    {
+     "name": "InstanceGroupSpec",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "实例组规格。可以通过调用[DescribeSpec](~~DescribeSpec~~)查询云手机支持购买的规格。",
+     "example": "acp.basic.small"
+    },
+    {
+     "name": "AutoPay",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否自动付费。默认为false。",
+     "example": "false"
+    },
+    {
+     "name": "AutoRenew",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否开启自动续费。默认为false。",
+     "example": "false"
+    },
+    {
+     "name": "OfficeSiteId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "网络ID。\n\n- 创建共享网络实例：网络ID选填。填写[云手机控制台>网络](https://wya.wuying.aliyun.com/network)页面中类型为**共享网络**的网络ID。如果控制台没有共享网络，可以不用填写，将会在创建实例组时自动创建一个共享网络。\n\n- 创建VPC网络实例：网络ID必填。填写[云手机控制台>网络](https://wya.wuying.aliyun.com",
+     "example": "cn-hangzhou+dir-745976****"
+    },
+    {
+     "name": "VSwitchId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "交换机 ID。可以通过调用[DescribeVSwitches](~~448774~~)查询交换机列表。\n\n- 创建共享网络实例：不填写。\n\n- 创建VPC网络实例：交换机 ID 必填。选用此交换机来创建实例。",
+     "example": "vsw-uf61uvzhz8ejaw776****"
+    },
+    {
+     "name": "PolicyGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "策略ID。可以通过调用[ListPolicyGroups](~~ListPolicyGroups~~)查询策略列表。",
+     "example": "pg-b7bxrrwxkijjh****"
+    },
+    {
+     "name": "ImageId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "镜像ID。可以通过调用[DescribeImageList](~~DescribeImageList~~)查询云手机的镜像列表。",
+     "example": "imgc-06zyt9m93zwax****"
+    },
+    {
+     "name": "Amount",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "实例组数量，默认值为1，最大值为100。",
+     "example": "8"
+    },
+    {
+     "name": "GpuAcceleration",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否开启GPU加速。",
+     "example": "false"
+    },
+    {
+     "name": "KeyPairId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "密钥对ID。创建实例组的时候，如果指定了合法的密钥对ID，会在这次创建成功的实例上，都绑定该密钥对，不用再重新调用绑定接口。\n\n> 目前还不支持扩容的时候绑定密钥对。",
+     "example": "kp-7o9xywwfutc1l****"
+    },
+    {
+     "name": "ClientToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用于保证请求的幂等性，防止重复提交请求。不超过100个字符。",
+     "example": "asadbuvwiabdbvchj****"
+    },
+    {
+     "name": "EnableIpv6",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "> 该参数暂未对外开放使用。",
+     "example": "null"
+    },
+    {
+     "name": "Ipv6Bandwidth",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "> 该参数暂未对外开放使用。",
+     "example": "null"
+    },
+    {
+     "name": "Tag",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "资源的标签。"
+    },
+    {
+     "name": "NetworkInfo",
+     "in": "query",
+     "required": false,
+     "type": "object",
+     "description": ""
+    },
+    {
+     "name": "BandwidthPackageType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "BandwidthPackageId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "NetworkType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "PromotionId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "StreamMode",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": ""
+    },
+    {
+     "name": "PaidCallBackUrl",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "",
+     "example": "wya.wuying.aliyun.com/instanceGroup"
+    },
+    {
+     "name": "SaleMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "InstanceVersion",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "ChannelCookie",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    }
+   ]
+  },
+  "DescribeAndroidInstanceGroups": {
+   "summary": "查询云手机实例组的详细信息。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "BizRegionId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "地域ID。",
+     "example": "cn-hangzhou"
+    },
+    {
+     "name": "InstanceGroupIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例组ID列表。"
+    },
+    {
+     "name": "InstanceGroupName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组名称。支持模糊查询。",
+     "example": "Cloud phone"
+    },
+    {
+     "name": "Status",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组状态。",
+     "example": "CREATING"
+    },
+    {
+     "name": "SaleMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "云手机的购买模式。",
+     "example": "standard"
+    },
+    {
+     "name": "ChargeType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "付费类型。",
+     "example": "PostPaid"
+    },
+    {
+     "name": "PolicyGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "策略ID。",
+     "example": "pg-1b77w6xrqfubi****"
+    },
+    {
+     "name": "KeyPairId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "密钥对的ID。",
+     "example": "kp-5htf0ymsrnb7q****"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页的最大条目数。取值范围1～100，默认值为100。",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用来表示当前开始读取的位置。置空表示从头开始。",
+     "example": "AAAAAV3MpHK1AP0pfERHZN5pu6l5V9uONHqPtDLM2U8s****"
+    },
+    {
+     "name": "Tags",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例组的标签。每个实例最多可绑定20个标签。"
+    },
+    {
+     "name": "InstanceVersion",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "SortKey",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    },
+    {
+     "name": "SortType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    }
+   ]
+  },
+  "DescribeAndroidInstances": {
+   "summary": "查询云手机实例的详情信息。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "InstanceGroupId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组ID。",
+     "example": "ag-25nt4kk9whjh****"
+    },
+    {
+     "name": "KeyPairId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "已绑定的密钥对ID。",
+     "example": "kp-5hh431emkpuoi****"
+    },
+    {
+     "name": "AndroidInstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例ID列表。"
+    },
+    {
+     "name": "AndroidInstanceName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例名称。",
+     "example": "name"
+    },
+    {
+     "name": "Status",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例状态。",
+     "example": "RUNNING"
+    },
+    {
+     "name": "SaleMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "售卖模式。",
+     "example": "Instance"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页的最大条目数。取值范围1～100，默认值为100。",
+     "example": "20"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用来表示当前开始读取的位置。置空表示从头开始。",
+     "example": "AAAAAV3MpHK1AP0pfERHZN5pu6kw9dGL5jves2FS9RLq****"
+    },
+    {
+     "name": "InstanceGroupIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例组ID列表。"
+    },
+    {
+     "name": "InstanceGroupName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例组名称。",
+     "example": "test"
+    },
+    {
+     "name": "ChargeType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "付费类型。",
+     "example": "PostPaid"
+    },
+    {
+     "name": "Tag",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "资源的标签。"
+    },
+    {
+     "name": "BizRegionId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "<props=\"china\">地域ID。可以通过调用[DescribeRegions](~~2807298~~)查询云手机不同版本（实例版/矩阵版）支持购买的地域列表。</props>\n\n<props=\"intl\">地域ID。可以通过调用[DescribeRegions](~~2807298~~)查询云手机支持购买的地域列表。</props>",
+     "example": "cn-shanghai"
+    },
+    {
+     "name": "NodeId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "<props=\"china\">矩阵ID。</props>\n<props=\"intl\">本参数暂不对外开放使用。</props>",
+     "example": "node_id"
+    },
+    {
+     "name": "NodeName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "<props=\"china\">矩阵的名称。</props>\n<props=\"intl\">本参数暂不对外开放使用。</props>",
+     "example": "node_name"
+    },
+    {
+     "name": "OfficeSiteIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云手机网络ID。"
+    },
+    {
+     "name": "AuthorizedUserId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例分配的用户ID，即无影便捷账号ID。",
+     "example": "user"
+    },
+    {
+     "name": "QosRuleIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "公网限速规则组ID。基础共享网络中的实例限速规则。"
+    },
+    {
+     "name": "AppManagePolicyId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "应用管控规则ID。",
+     "example": "amp-shigvudbyeuib****"
+    },
+    {
+     "name": "PrivateIpAddress",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例的私网IP地址。",
+     "example": "10.0.162.136"
+    },
+    {
+     "name": "SortKey",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "查询资源时设置排序方式。\n\n与SortType配合使用，取值必须为CreationTime或ExpiredTime。\n\n取值为CreationTime则根据创建时间排序，取值为ExpiredTime则根据到期时间排序。\n\n默认根据创建时间倒序排列。",
+     "example": "CreationTime"
+    },
+    {
+     "name": "SortType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "排序方式，默认为倒序。取值：\n- ASC：增序\n- DESC：倒序",
+     "example": "ASC"
+    },
+    {
+     "name": "InstanceVersion",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例版本。默认为basic，查询无影云手机实例。",
+     "example": "EnterpriseAi"
+    }
+   ]
+  },
+  "DescribeInvocations": {
+   "summary": "查询RunCommand接口命令执行结果。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "InstanceIds",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "云手机实例ID列表，一次请求最多查询50个实例的执行结果。"
+    },
+    {
+     "name": "InvocationId",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "命令执行ID，根据该ID和云手机实例ID可查询一次命令执行的结果。",
+     "example": "t-4e98eeb5****"
+    }
+   ]
+  },
+  "DescribeTasks": {
+   "summary": "获取云手机实例当前任务列表。云手机很多（创建、开关机等）的操作都是异步进行，系统将产生一个任务ID供用户查询操作进度及结果。用户可通过调用该接口查询所有任务清单及执行情况。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "InvokeId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "命令执行ID，可以填写上一次操作返回的requestId。",
+     "example": "B8ED2BA9-0C6A-5643-818F-B5D60A64****"
+    },
+    {
+     "name": "ResourceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "资源ID列表。"
+    },
+    {
+     "name": "TaskIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "任务ID列表。"
+    },
+    {
+     "name": "ParentTaskId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "父任务ID。",
+     "example": "t-iaej5dkbnmivx****"
+    },
+    {
+     "name": "TaskType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "任务类型。",
+     "example": "StartInstance"
+    },
+    {
+     "name": "TaskTypes",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "任务类型列表。"
+    },
+    {
+     "name": "TaskStatus",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "任务状态。",
+     "example": "Processing"
+    },
+    {
+     "name": "TaskStatuses",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "任务状态列表。"
+    },
+    {
+     "name": "Level",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "任务级别，1表示批量任务；2表示实例级任务。",
+     "example": "1"
+    },
+    {
+     "name": "InstanceId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例ID。",
+     "example": "acp-2zecay9ponatdc4m****"
+    },
+    {
+     "name": "InstanceName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例名称。",
+     "example": "defaultInstanceName"
+    },
+    {
+     "name": "Param",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "扩展字段。",
+     "example": "param"
+    },
+    {
+     "name": "MaxResults",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "分页查询时每页的最大条目数。取值范围 1～100，默认值为 10。",
+     "example": "10"
+    },
+    {
+     "name": "NextToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用来表示当前开始读取的位置。置空表示从头开始。",
+     "example": "FFbc8N4E1iOlcSxC+8boa0HHH2LKWbggYUinyrZWvtS1oTrMYCg1HuMLGuftj0****"
+    }
+   ]
+  },
+  "FetchFile": {
+   "summary": "从云手机拉取文件到OSS。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AndroidInstanceIdList",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "实例列表。"
+    },
+    {
+     "name": "SourceFilePath",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "从指定的云手机文件路径拉取文件。",
+     "example": "/data/a.txt"
+    },
+    {
+     "name": "UploadType",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "保存拉取文件的存储类型。\n\n> 目前仅支持的云端存储类型是OSS对象存储。",
+     "example": "OSS"
+    },
+    {
+     "name": "UploadEndpoint",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "从OSS拉取文件的服务域名。\n\n> 当云手机和OSS Bucket处于相同地域，域名可填写内网域名，加快传输速率，不产生公网网络费用，杭州为例： `oss-cn-hangzhou-internal.aliyuncs.com` 。具体的域名列表映射可参考[OSS地域和访问域名](~~31837~~)。",
+     "example": "oss-cn-hangzhou-internal.aliyuncs.com"
+    },
+    {
+     "name": "UploadUrl",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "从OSS拉取文件的云端地址。\n\n> 可使用的OSS桶名，必须以“cloudphone-saved-bucket-”前缀的Bucket桶，例如“cloudphone-saved-bucket-example”，并创建OSS文件夹作为备份目录。UploadUrl的拼写规则是“oss://”+“桶名”+“/”+“文件夹名称”。",
+     "example": "oss://cloudphone-saved-bucket-example/received\n"
+    },
+    {
+     "name": "ClientToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用于保证请求的幂等性，防止重复提交请求。不超过 100 个字符。",
+     "example": "425F351C-3F8E-5218-A520-B6311D0D****"
+    }
+   ]
+  },
+  "InstallApp": {
+   "summary": "批量在无影云手机实例中安装应用。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AppIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "应用ID列表。"
+    },
+    {
+     "name": "InstanceGroupIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例组列表。"
+    },
+    {
+     "name": "InstanceIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例列表。"
+    }
+   ]
+  },
+  "ModifyAndroidInstance": {
+   "summary": "修改云手机实例信息，目前仅支持修改实例名称、上下行带宽限制。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AndroidInstanceId",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "单个实例ID，当该字段有值时会忽略InstanceIds（多个实例ID）",
+     "example": "acp-8v5bjld0r7tkl****\n"
+    },
+    {
+     "name": "NewAndroidInstanceName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "实例的新名称。\n\n> \n> - 实例名称长度不超过30个字符；请以大/小写字母或中文开头，不能以http://和https://开头，仅支持中文、英文、数字、半角冒号（:）、下划线（_）、点号（.）或者连字符（-）",
+     "example": "new_name"
+    },
+    {
+     "name": "InstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "云手机实例ID列表，可设置 1~100 个。"
+    },
+    {
+     "name": "UpBandwidthLimit",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "上行带宽限速，单位Mbps",
+     "example": "50"
+    },
+    {
+     "name": "DownBandwidthLimit",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "下行带宽限速，单位Mbps",
+     "example": "50"
+    }
+   ]
+  },
+  "RunCommand": {
+   "summary": "在云手机实例中执行命令。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "InstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例ID列表。一次请求最多支持50个实例。"
+    },
+    {
+     "name": "CommandContent",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "命令内容。",
+     "example": "ls"
+    },
+    {
+     "name": "Timeout",
+     "in": "query",
+     "required": false,
+     "type": "integer",
+     "description": "超时时间。单位秒，如果超过该时间命令仍然没有执行完成，则命令执行状态为超时，如果不填则默认为60秒。",
+     "example": "60"
+    },
+    {
+     "name": "AgentType",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "执行命令的通道类型。",
+     "example": "EdsAgent"
+    },
+    {
+     "name": "ContentEncoding",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "命令内容（`CommandContent`）的编码方式。不区分大小写。\n\n> 若传入的值不在枚举值范围内，则一律视为`PlainText`处理。",
+     "example": "PlainText"
+    }
+   ]
+  },
+  "SendFile": {
+   "summary": "将OSS文件或者公网下载链接的文件推送到云手机。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AndroidInstanceIdList",
+     "in": "query",
+     "required": true,
+     "type": "array",
+     "description": "实例列表。"
+    },
+    {
+     "name": "SourceFilePath",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "将文件上传到云手机内部的上传路径。\n\n> 当UploadType是OSS或者OSS_BRIDGED，云手机内部的上传路径SourceFilePath必须是目录，例如：/sdcard/Download；当UploadType是DOWNLOAD_URL，云手机内部的上传路径SourceFilePath必须是文件，例如：/sdcard/Download/MyFile.txt。\n>",
+     "example": "/sdcard/Download"
+    },
+    {
+     "name": "UploadType",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "上传文件所在的存储类型。\n\n- OSS\n 当上传的文件是OSS资源，上传文件所在的存储类型是OSS。\n- DOWNLOAD_URL\n 当上传的文件是文件的公网下载链接，上传文件所在的存储类型是DOWNLOAD_URL。\n- OSS_BRIDGED\n 通过公网下载链接同步到OSS，再通过OSS内网分发到云手机实例。",
+     "example": "OSS"
+    },
+    {
+     "name": "UploadEndpoint",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "文件上传到OSS的服务域名，UploadType为OSS和OSS_BRIDGED时，UploadEndpoint必填。\n\n> 当云手机和OSS Bucket处于相同地域，域名可填写内网域名，加快传输速率，不产生公网网络费用，杭州为例： `oss-cn-hangzhou-internal.aliyuncs.com` 。具体的域名列表映射可参考[OSS地域和访问域名](~~31837~~)。",
+     "example": "oss-cn-hangzhou-internal.aliyuncs.com"
+    },
+    {
+     "name": "UploadUrl",
+     "in": "query",
+     "required": true,
+     "type": "string",
+     "description": "- 当UploadType是OSS，UploadUrl是文件上传到OSS的云端地址。\n> 可使用的OSS Bucket名，必须以“cloudphone-saved-bucket-”前缀的Bucket Bucket，例如“cloudphone-saved-bucket-example”，并创建OSS文件夹作为备份目录。UploadUrl的拼写规则是“oss://”+“Bucket名”+“/”+“文件",
+     "example": "oss://cloudphone-saved-bucket-example/send/a.txt"
+    },
+    {
+     "name": "TargetFileName",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "从OSS上传到云手机的文件名称。\n\n> 当UploadType是OSS或者OSS_BRIDGED，TargetFileName字段选填，如果TargetFileName为空，OSS文件上传到云手机的文件名称保留源文件名称，如果TargetFileName不为空，源文件上传到云手机的SourceFilePath路径下文件名称为TargetFileName的值；当UploadType是DOWNLOAD",
+     "example": "test.txt"
+    },
+    {
+     "name": "AutoInstall",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "上传的应用是否自动安装。",
+     "example": "true"
+    },
+    {
+     "name": "ClientToken",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "用于保证请求的幂等性，防止重复提交请求。不超过 100 个字符。",
+     "example": "425F351C-3F8E-5218-A520-B6311D0D****"
+    },
+    {
+     "name": "FileMd5",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": ""
+    }
+   ]
+  },
+  "StartAndroidInstance": {
+   "summary": "启动（开机）云手机实例。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AndroidInstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例列表。"
+    },
+    {
+     "name": "SaleMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "售卖模式。该参数已废弃！",
+     "example": "Instance"
+    }
+   ]
+  },
+  "StopAndroidInstance": {
+   "summary": "停止（关机）云手机实例。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AndroidInstanceIds",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例ID列表。"
+    },
+    {
+     "name": "ForceStop",
+     "in": "query",
+     "required": false,
+     "type": "boolean",
+     "description": "是否强制关机。当云手机遇到系统、网络等异常原因导致无法关机时，可选择强制关机（可能会丢失未保存数据）。",
+     "example": "false"
+    },
+    {
+     "name": "SaleMode",
+     "in": "query",
+     "required": false,
+     "type": "string",
+     "description": "售卖模式。该参数已废弃！",
+     "example": "Instance"
+    }
+   ]
+  },
+  "UninstallApp": {
+   "summary": "批量从无影云手机实例中卸载应用。",
+   "method": "post",
+   "path": "/",
+   "parameters": [
+    {
+     "name": "AppIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "应用ID列表。"
+    },
+    {
+     "name": "InstanceGroupIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例组ID列表。\n该参数与InstanceIdList参数选填一个。如果两者同时有值，则仅InstanceGroupIdList有效。"
+    },
+    {
+     "name": "InstanceIdList",
+     "in": "query",
+     "required": false,
+     "type": "array",
+     "description": "实例ID列表。\n该参数与InstanceGroupIdList参数选填一个。如果两者同时有值，则仅InstanceGroupIdList有效。"
+    }
+   ]
+  }
+ },
+ "all_api_names": [
+  "ActivateEdgeMobileAgent",
+  "AttachKeyPair",
+  "AuthorizeAndroidInstance",
+  "BackupAndroidInstance",
+  "BackupApp",
+  "BackupFile",
+  "BatchGetAcpConnectionTicket",
+  "CancelAgentTask",
+  "ChangeCloudPhoneNode",
+  "CheckResourceStock",
+  "CreateAICloudPhone",
+  "CreateAndroidInstanceGroup",
+  "CreateApp",
+  "CreateCloudPhoneNode",
+  "CreateCreditPackage",
+  "CreateCustomImage",
+  "CreateEdgeMobileAgentPackage",
+  "CreateKeyPair",
+  "CreateMobileAgentPackage",
+  "CreatePolicyGroup",
+  "CreateScheduledTask",
+  "CreateScreenshot",
+  "CreateSystemPropertyTemplate",
+  "DeleteAndroidInstanceGroup",
+  "DeleteApps",
+  "DeleteBackupFile",
+  "DeleteCloudPhoneNodes",
+  "DeleteImages",
+  "DeleteKeyPairs",
+  "DeleteMobileAgentPackage",
+  "DeletePolicyGroup",
+  "DeleteScheduledTask",
+  "DeleteSystemPropertyTemplates",
+  "DescribeAgentTask",
+  "DescribeAndroidInstanceGroups",
+  "DescribeAndroidInstances",
+  "DescribeApps",
+  "DescribeBackupFiles",
+  "DescribeBuckets",
+  "DescribeCloudPhoneNodes",
+  "DescribeCreditDetail",
+  "DescribeCreditPackage",
+  "DescribeDisplayConfig",
+  "DescribeEdgeMobileAgentPackages",
+  "DescribeImageList",
+  "DescribeInvocations",
+  "DescribeJVSInstance",
+  "DescribeKeyPairs",
+  "DescribeMetricLast",
+  "DescribeMetricList",
+  "DescribeMetricTop",
+  "DescribeMobileAgentPackage",
+  "DescribeRegions",
+  "DescribeScheduledTaskExecutions",
+  "DescribeScheduledTasks",
+  "DescribeSpec",
+  "DescribeSystemPropertyTemplates",
+  "DescribeTasks",
+  "DetachKeyPair",
+  "DisconnectAndroidInstance",
+  "DistributeImage",
+  "DowngradeAndroidInstanceGroup",
+  "EndCoordination",
+  "ExpandDataVolume",
+  "ExpandPhoneDataVolume",
+  "FetchFile",
+  "GenerateCoordinationCode",
+  "GetInstanceProperties",
+  "GetNetworkBlacklist",
+  "ImportImage",
+  "ImportKeyPair",
+  "InstallApp",
+  "InstallMonitorAgent",
+  "InstanceHealer",
+  "ListInstanceAdbAttributes",
+  "ListPolicyGroups",
+  "ListTagResources",
+  "ModifyAndroidInstance",
+  "ModifyAndroidInstanceGroup",
+  "ModifyApp",
+  "ModifyCloudPhoneNode",
+  "ModifyDisplayConfig",
+  "ModifyInstanceChargeType",
+  "ModifyInstanceGroupSpec",
+  "ModifyJVSInstance",
+  "ModifyKeyPairName",
+  "ModifyPolicyGroup",
+  "ModifyScheduledTask",
+  "ModifySystemPropertyTemplate",
+  "OperateApp",
+  "PauseAgentTask",
+  "RebootAndroidInstancesInGroup",
+  "RecoverAndroidInstance",
+  "RecoverApp",
+  "RecoveryFile",
+  "RefreshAuthTokens",
+  "RenewAndroidInstanceGroups",
+  "RenewCloudPhoneNodes",
+  "RenewMobileAgentPackage",
+  "ResetAndroidInstancesInGroup",
+  "ResumeAgentTask",
+  "RunAgentTask",
+  "RunCommand",
+  "RunSyncCommand",
+  "SendFile",
+  "SendSystemPropertyTemplate",
+  "SetAdbSecure",
+  "SetNetworkBlacklist",
+  "StartAndroidInstance",
+  "StartInstanceAdb",
+  "StopAndroidInstance",
+  "StopInstanceAdb",
+  "TagResources",
+  "UninstallApp",
+  "UninstallMonitorAgent",
+  "UntagResources",
+  "UpdateCustomImageName",
+  "UpdateInstanceGroupImage",
+  "UpdateInstanceImage",
+  "UpgradeAndroidInstanceGroup"
+ ]
+}
