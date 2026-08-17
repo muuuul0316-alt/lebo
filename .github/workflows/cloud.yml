@@ -20,6 +20,8 @@ on:
           - desktop-start
           - desktop-run
           - gen-assets
+          - fetch-api-meta
+          - phone-status
       command:
         description: 'desktop-run 时执行的 PowerShell 命令'
         required: false
@@ -66,6 +68,34 @@ jobs:
             cat /tmp/out.txt
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
+
+      # ---------- 抓取阿里云 OpenAPI 官方元数据（无需任何密钥） ----------
+      - name: 抓取云 API 元数据
+        if: github.event.inputs.action == 'fetch-api-meta'
+        run: |
+          set -euo pipefail
+          node tools/fetch-cloud-api.mjs 2>&1 | tee /tmp/meta.txt
+          {
+            echo "## 阿里云 API 元数据抓取"
+            echo '```'
+            cat /tmp/meta.txt
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: 提交 API 元数据
+        if: github.event.inputs.action == 'fetch-api-meta'
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain docs/api-meta)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/api-meta
+            git commit -m "chore: 抓取阿里云无影云电脑/云手机 OpenAPI 元数据"
+            git push
+            echo "已提交 API 元数据" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "元数据无变化" >> $GITHUB_STEP_SUMMARY
+          fi
 
       # ---------- Seedream 生图 ----------
       - name: 生成品牌视觉（Seedream）
