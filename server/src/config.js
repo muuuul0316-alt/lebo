@@ -1,6 +1,7 @@
 // 服务端配置：从环境变量与 .env 读取。真实密钥只存在于部署机的 .env，不进 Git。
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -9,8 +10,17 @@ function loadDotEnv() {
   for (const p of [path.join(ROOT, '.env'), path.resolve(ROOT, '..', '.env')]) {
     if (!fs.existsSync(p)) continue;
     for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2];
+      if (/^\s*(#|$)/.test(line)) continue; // 整行注释与空行
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+      if (!m || (m[1] in process.env)) continue;
+      let v = m[2];
+      // 带引号的值原样保留（密钥常含 # 与空格）；不带引号时才剥掉行内注释
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        v = v.slice(1, -1);
+      } else {
+        v = v.replace(/\s+#.*$/, '').trim();
+      }
+      process.env[m[1]] = v;
     }
   }
 }
@@ -56,7 +66,10 @@ export const config = {
     instanceId: env('PHONE_INSTANCE_ID'),
     region: env('PHONE_REGION', env('WUYING_REGION', 'cn-shenzhen')),
   },
-  cuaAgentToken: env('CUA_AGENT_TOKEN', 'change-me'),
+  // CUA 通道令牌：未配置时随机生成（绝不使用可猜测的默认值，否则公网任何人可冒充云桌面 agent）
+  cuaAgentToken: env('CUA_AGENT_TOKEN') || crypto.randomBytes(24).toString('base64url'),
+  // 素材 URL 签名密钥：未配置时随机生成（重启后旧链接失效，符合私人内容的安全预期）
+  assetSecret: env('ASSET_SECRET') || crypto.randomBytes(32).toString('base64url'),
   demoMedia: (() => {
     try { return JSON.parse(env('DEMO_MEDIA_JSON', '[]')); } catch { return []; }
   })(),

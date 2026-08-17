@@ -55,10 +55,16 @@ const waitFor = async (ws, pred, ms = 4000) => {
   throw new Error('timeout waiting for ' + pred.toString());
 };
 
+const bindTokenOf = (joinUrl) => new URL(joinUrl).searchParams.get('t');
+
 async function setup() {
   const { json: dev } = await postJson(`${BASE}/api/tv/register`, { name: '测试电视' });
-  const tv = await openWs(`ws://localhost:8699/ws?role=tv&device=${dev.deviceId}`);
-  const { json: bind } = await postJson(`${BASE}/api/phone/bind`, { deviceId: dev.deviceId, castCode: dev.castCode, nickname: '测试' });
+  // 电视端 WS 需持注册下发的 deviceSecret
+  const tv = await openWs(`ws://localhost:8699/ws?role=tv&device=${dev.deviceId}&secret=${encodeURIComponent(dev.deviceSecret)}`);
+  // 手机凭二维码里的一次性 bindToken 绑定
+  const { json: bind } = await postJson(`${BASE}/api/phone/bind`, {
+    deviceId: dev.deviceId, bindToken: bindTokenOf(dev.joinUrl), nickname: '测试',
+  });
   const phone = await openWs(`ws://localhost:8699/ws?role=phone&session=${bind.sessionId}&user=${bind.userId}`);
   return { dev, tv, phone, bind };
 }
@@ -163,8 +169,35 @@ test('电视端重连恢复最后画面', async () => {
   await waitFor(tv, (m) => m.command === 'play_local');
   tv.close();
   await new Promise((r) => setTimeout(r, 100));
-  const tv2 = await openWs(`ws://localhost:8699/ws?role=tv&device=${dev.deviceId}`);
+  const tv2 = await openWs(`ws://localhost:8699/ws?role=tv&device=${dev.deviceId}&secret=${encodeURIComponent(dev.deviceSecret)}`);
   const restored = await waitFor(tv2, (m) => m.type === 'tv_command' && m.command === 'play_local', 2000);
   assert.ok(restored.play.url);
   tv2.close(); phone.close();
+});
+
+// ---- 安全回归：鉴权必须真的拦得住 ----
+test('安全：伪造 bindToken 无法绑定他人电视', async () => {
+  const { json: dev } = await postJson(`${BASE}/api/tv/register`, { name: '别人家的电视' });
+  const bad = await postJson(`${BASE}/api/phone/bind`, {
+    deviceId: dev.deviceId, bindToken: 'forged-token-aaaaaaaaaaaaaaaaaaa', nickname: '入侵者',
+  });
+  assert.equal(bad.status, 401, '伪造 token 必须被拒');
+  assert.equal(bad.json.error, 'bind_token_invalid');
+});
+
+test('安全：无 deviceSecret 无法冒充电视接管画面', async () => {
+  const { json: dev } = await postJson(`${BASE}/api/tv/register`, { name: '别人家的电视' });
+  const ws = new WebSocket(`ws://localhost:8699/ws?role=tv&device=${dev.deviceId}`); // 不带 secret
+  const code = await new Promise((resolve) => {
+    ws.on('close', (c) => resolve(c));
+    ws.on('error', () => {});
+  });
+  assert.ok(code === 4003 || code === 4004, `应被拒绝，实际 close code=${code}`);
+});
+
+test('安全：私人素材未签名不可直链访问', async () => {
+  const res = await new Promise((resolve) => {
+    http.get(`${BASE}/uploads/some/private.jpg`, (r) => { r.resume(); resolve(r.statusCode); });
+  });
+  assert.equal(res, 403, '未签名的素材直链必须 403');
 });

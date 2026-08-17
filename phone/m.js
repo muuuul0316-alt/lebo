@@ -4,7 +4,8 @@
   const $ = (id) => document.getElementById(id);
   const qp = new URLSearchParams(location.search);
   let deviceId = qp.get('d') || localStorage.getItem('lebo_last_device');
-  let castCode = qp.get('c') || '';
+  let bindToken = qp.get('t') || '';   // 二维码里的一次性绑定令牌
+  let castCode = qp.get('c') || '';    // 人工报码兜底（服务端有频率限制）
   let sessionId = null, userId = null, ws = null, wsRetry = 0;
   let presenting = false;
 
@@ -14,9 +15,20 @@
     try {
       const res = await fetch('/api/phone/bind', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, castCode, nickname: $('nickname').value.trim() }),
+        body: JSON.stringify({ deviceId, bindToken, castCode, nickname: $('nickname').value.trim() }),
       });
-      if (!res.ok) throw new Error((await res.json()).error || 'bind_failed');
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))).error;
+        if (err === 'bind_token_invalid') {
+          $('connect-hint').textContent = '这个二维码过期了。看一眼电视，重新扫一次就行。';
+          return;
+        }
+        if (err === 'too_many_attempts') {
+          $('connect-hint').textContent = '试得太频繁了，等几分钟再试，或者直接扫电视上的码。';
+          return;
+        }
+        throw new Error(err || 'bind_failed');
+      }
       const info = await res.json();
       sessionId = info.sessionId; userId = info.userId; deviceId = info.deviceId;
       localStorage.setItem('lebo_last_device', deviceId);
@@ -31,15 +43,28 @@
     }
   }
 
+  let pingTimer = null;
   function connectWs() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws?role=phone&session=${sessionId}&user=${userId}`);
     ws.onopen = () => { wsRetry = 0; };
     ws.onmessage = (e) => handle(JSON.parse(e.data));
-    ws.onclose = () => { setTimeout(connectWs, Math.min(1000 * ++wsRetry, 5000)); };
+    ws.onclose = (ev) => {
+      // 服务重启后会话已不存在：重连无意义，提示回到扫码
+      if (ev.code === 4004) {
+        addMsg('xiaole', '跟电视断开了。看一眼电视上的二维码，重新扫一下。');
+        return;
+      }
+      setTimeout(connectWs, Math.min(1000 * ++wsRetry, 5000));
+    };
     ws.onerror = () => ws.close();
-    setInterval(() => ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'ping' })), 25000);
+    clearInterval(pingTimer); // 每次重连都新建 interval 会不断叠加心跳
+    pingTimer = setInterval(() => ws?.readyState === 1 && ws.send(JSON.stringify({ type: 'ping' })), 25000);
   }
+  // 微信/移动浏览器切后台常断连，回前台时主动检查
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && sessionId && (!ws || ws.readyState > 1)) connectWs();
+  });
   const send = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
 
   let greeted = false;
@@ -70,8 +95,20 @@
     if (role === 'me') feed.querySelector('.empty-illust')?.remove(); // 用户开口后收起空状态插画
     const el = document.createElement('div');
     el.className = 'msg ' + role;
-    if (text) el.textContent = text;
-    if (opts.html) el.innerHTML = opts.html;
+    // 正文与富内容并存：早前版本用 innerHTML 覆盖 textContent，导致带按钮的结果卡
+    // 把小乐说的话整段吞掉（违反"过程可见"）。
+    if (text) {
+      const p = document.createElement('div');
+      p.className = 'msg-text';
+      p.textContent = text; // 始终按纯文本插入，杜绝注入
+      el.appendChild(p);
+    }
+    if (opts.html) {
+      const x = document.createElement('div');
+      x.className = 'msg-extra';
+      x.innerHTML = opts.html; // 仅承载本地生成的结构，其中的外来字段一律已过 esc()
+      el.appendChild(x);
+    }
     feed.appendChild(el);
     feed.scrollTop = feed.scrollHeight;
     return el;
@@ -103,7 +140,12 @@
         break;
       case 'ingest_done':
         if (ingestEl) { ingestEl.remove(); ingestEl = null; }
-        addMsg('result', p.speech, { html: p.failures?.length ? `<div class="evidence">${p.failures.map((f) => `⚠ ${f.file}：${f.reason}`).join('<br>')}</div>` : `<div class="outline-list">共 ${p.sections} 段，约 ${p.estMinutes} 分钟。说"你来讲"就开始。</div>` });
+        // 文件名来自用户上传、且会广播给同会话所有人，必须转义（否则构成跨用户存储型 XSS）
+        addMsg('result', p.speech, {
+          html: p.failures?.length
+            ? `<div class="evidence">${p.failures.map((f) => `⚠ ${esc(f.file)}：${esc(f.reason)}`).join('<br>')}</div>`
+            : `<div class="outline-list">共 ${Number(p.sections) || 0} 段，约 ${Number(p.estMinutes) || 1} 分钟。说“你来讲”就开始。</div>`,
+        });
         break;
       case 'outline':
         addMsg('result', p.speech, { html: outlineHtml(p.outline) });
@@ -112,8 +154,10 @@
         presenting = true; showPresentCtl(p);
         break;
       case 'answer':
-        addMsg('xiaole', p.speech + (p.source_label ? '' : ''));
-        if (p.source_label) feed.lastChild.innerHTML += `<div class="evidence">📎 ${p.source_label}</div>`;
+        // 来源标签可能含模型输出或文件名，同样转义（D-04 要求必标来源，但不能因此引入注入）
+        addMsg('xiaole', p.speech, {
+          html: p.source_label ? `<div class="evidence">📎 ${esc(p.source_label)}</div>` : '',
+        });
         break;
       case 'present_done':
         presenting = false; $('present-ctl').classList.add('hidden');
@@ -123,11 +167,18 @@
   }
 
   function renderStatus(p) {
-    const stepsHtml = (p.steps || []).map((s) => `<div class="step ${s.status}"><span class="dot"></span>${s.name}</div>`).join('');
+    const stepsHtml = (p.steps || []).map((s) =>
+      `<div class="step ${esc(s.status || '')}"><span class="dot"></span>${esc(s.name || '')}</div>`).join('');
     const html = `${p.speech ? esc(p.speech) : '处理中'}<div class="status-steps">${stepsHtml}</div>`;
     if (!statusEl) statusEl = addMsg('status', '', { html });
-    else statusEl.innerHTML = html;
+    else setExtra(statusEl, html);
     feed.scrollTop = feed.scrollHeight;
+  }
+  // addMsg 生成的是 .msg-text + .msg-extra 两段结构，更新时只替换富内容那段
+  function setExtra(el, html) {
+    let x = el.querySelector('.msg-extra');
+    if (!x) { x = document.createElement('div'); x.className = 'msg-extra'; el.appendChild(x); }
+    x.innerHTML = html;
   }
   function markStepsDone() {
     statusEl?.querySelectorAll('.step').forEach((s) => { s.className = 'step done'; });
@@ -139,7 +190,7 @@
     const idx = stages.indexOf(p.stage);
     const html = `正在学习你的材料<div class="status-steps">${stages.map((s, i) => `<div class="step ${i < idx ? 'done' : i === idx ? 'running' : ''}"><span class="dot"></span>${s}${i === idx && p.detail ? '：' + esc(p.detail) : ''}</div>`).join('')}</div>`;
     if (!ingestEl) ingestEl = addMsg('status', '', { html });
-    else ingestEl.innerHTML = html;
+    else setExtra(ingestEl, html);
     feed.scrollTop = feed.scrollHeight;
   }
 
@@ -147,7 +198,7 @@
     const labels = { pause: '暂停', restart: '从头播', stop: '关掉', replay: '重播', next_one: '换一个',
       explain: '让它讲', start_present: '你来讲', restart_present: '重讲', export_notes: '导出要点',
       confirm_outline: '就这么做', resume_present: '继续讲' };
-    const btns = (p.actions || []).map((a) => `<button data-action="${a}">${labels[a] || a}</button>`).join('');
+    const btns = (p.actions || []).map((a) => `<button data-action="${esc(a)}">${esc(labels[a] || a)}</button>`).join('');
     return `${p.card?.title ? esc(p.card.title) : ''}${btns ? `<div class="result-actions">${btns}</div>` : ''}`;
   }
   function outlineHtml(o) {
@@ -215,38 +266,71 @@
   }
 
   let liveText = '';
+  let speechFailed = false;
   function startWebSpeech() {
-    usingWebSpeech = true; liveText = '';
+    usingWebSpeech = true; liveText = ''; speechFailed = false;
     recog = new SR(); recog.lang = 'zh-CN'; recog.interimResults = true; recog.continuous = true;
     recog.onresult = (ev) => {
       let t = '';
       for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
       liveText = t;
     };
-    recog.onerror = () => {};
-    recog.onend = () => { if (liveText.trim()) sendText(liveText.trim()); recognizing = false; };
-    try { recog.start(); recognizing = true; } catch { startRecorder(); }
+    // iOS Safari / 微信内置浏览器上 SpeechRecognition 往往存在但不可用（not-allowed /
+    // service-not-allowed / network），错误是异步来的。吞掉它就会"按住说话全程没反应"，
+    // 所以这里必须回退到录音上传。
+    recog.onerror = (e) => {
+      speechFailed = true;
+      const fatal = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].includes(e?.error);
+      if (fatal && talk.classList.contains('recording')) {
+        usingWebSpeech = false;
+        try { recog.stop(); } catch {}
+        startRecorder(); // 还按着，转录音兜底
+      }
+    };
+    recog.onend = () => {
+      recognizing = false;
+      if (liveText.trim()) sendText(liveText.trim());
+      else if (speechFailed && !usingWebSpeech) { /* 已转录音，等录音结果 */ }
+      else if (speechFailed) addMsg('xiaole', '没听清，再说一次？');
+    };
+    try { recog.start(); recognizing = true; } catch { usingWebSpeech = false; startRecorder(); }
   }
 
   async function startRecorder() {
     usingWebSpeech = false;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      addMsg('xiaole', location.protocol === 'https:'
+        ? '这个浏览器不支持录音。点右边键盘图标打字，一样能用。'
+        : '要用语音得走 https。现在先点右边键盘图标打字。');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 异步授权期间用户可能已经松手：此时不该继续占用麦克风
+      if (!talk.classList.contains('recording')) { stream.getTracks().forEach((t) => t.stop()); return; }
       recorder = new MediaRecorder(stream); chunks = [];
-      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
       recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        stream.getTracks().forEach((t) => t.stop()); // 必须停轨，否则麦克风常亮
+        if (!chunks.length) return;
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         await uploadAsr(blob);
       };
       recorder.start();
+      if (!talk.classList.contains('recording')) { try { recorder.stop(); } catch {} } // 竞态兜底
     } catch {
       addMsg('xiaole', '没拿到麦克风权限。点右边键盘图标打字，一样能用。');
     }
   }
 
   async function uploadAsr(blob) {
-    const fmt = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('webm') ? 'ogg' : 'wav';
+    // 火山 ASR 按 format 解码，谎报格式必然识别失败。
+    // MediaRecorder 实际产出：Chrome/Android→webm(opus)，iOS Safari→mp4(aac)。
+    const mime = (blob.type || recorder?.mimeType || '').toLowerCase();
+    const fmt = mime.includes('ogg') ? 'ogg'
+      : mime.includes('webm') ? 'webm'
+      : mime.includes('mp4') || mime.includes('aac') || mime.includes('m4a') ? 'mp4'
+      : mime.includes('wav') ? 'wav' : 'webm';
     const fd = new FormData(); fd.append('audio', blob, 'a.' + fmt); fd.append('format', fmt);
     const tip = addMsg('status', '识别中…');
     try {
@@ -257,15 +341,25 @@
     } catch { tip.remove(); addMsg('xiaole', '没听清，再说一次？'); }
   }
 
-  talk.addEventListener('touchstart', (e) => { e.preventDefault(); startTalk(); });
-  talk.addEventListener('touchend', (e) => { e.preventDefault(); endTalk(); });
-  talk.addEventListener('mousedown', startTalk);
-  talk.addEventListener('mouseup', endTalk);
-  talk.addEventListener('mouseleave', () => { if (talk.classList.contains('recording')) endTalk(); });
+  // 触屏设备上 touch 事件后会补发 mouse 事件，双绑定会导致重复触发；用标记隔离。
+  let touchMode = false;
+  talk.addEventListener('touchstart', (e) => { e.preventDefault(); touchMode = true; startTalk(); }, { passive: false });
+  talk.addEventListener('touchend', (e) => { e.preventDefault(); endTalk(); }, { passive: false });
+  talk.addEventListener('touchcancel', () => endTalk()); // 来电/通知打断时必须收尾，否则麦克风常亮
+  talk.addEventListener('mousedown', () => { if (!touchMode) startTalk(); });
+  talk.addEventListener('mouseup', () => { if (!touchMode) endTalk(); });
+  talk.addEventListener('mouseleave', () => { if (!touchMode && talk.classList.contains('recording')) endTalk(); });
 
   // ============ 内容添加 P2-a ============
   function openAdd() { $('add-panel').classList.remove('hidden'); }
-  function closeAdd() { $('add-panel').classList.add('hidden'); selected = []; renderSelected(); }
+  function closeAdd() {
+    $('add-panel').classList.add('hidden');
+    selected = [];
+    // 必须重置 input.value：否则再次选择"同一个文件"时 value 未变、不触发 change，
+    // 用户会卡在面板里怎么点都没反应。
+    for (const id of ['file-album', 'file-doc', 'file-vip']) { const el = $(id); if (el) el.value = ''; }
+    renderSelected();
+  }
   $('add-btn').onclick = openAdd;
   $('add-close').onclick = closeAdd;
   $('add-panel').querySelector('.panel-mask').onclick = closeAdd;
@@ -291,7 +385,7 @@
   };
 
   // 文字入口
-  $('add-text').onclick = () => { $('add-panel').classList.add('hidden'); $('text-modal').classList.remove('hidden'); };
+  $('add-text').onclick = () => { closeAdd(); $('text-modal').classList.remove('hidden'); };
   $('kb-btn').onclick = () => $('text-modal').classList.remove('hidden');
   $('text-close').onclick = () => $('text-modal').classList.add('hidden');
   $('text-modal').querySelector('.panel-mask').onclick = () => $('text-modal').classList.add('hidden');

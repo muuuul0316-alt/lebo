@@ -53,6 +53,8 @@ button { font: inherit; cursor: pointer; border: 0; }
 .msg.me { background: var(--me); align-self: flex-end; border-bottom-right-radius: 4px; }
 .msg.status { background: var(--card2); align-self: flex-start; font-size: 14px; color: var(--ink-dim); }
 .msg.result { background: var(--card); align-self: flex-start; border-left: 3px solid var(--brand); }
+.msg-text { white-space: pre-wrap; }
+.msg-extra:not(:empty) { margin-top: 8px; }
 .status-steps { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .step { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .step .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-dim); }

@@ -133,7 +133,12 @@ async function execPlay(sess, userId, dev, taskId, slots) {
 async function execPlayback(sess, userId, dev, taskId, slots) {
   const op = slots.op || 'resume';
   sendToTv(dev, tvCommand(dev.deviceId, 'player_ctl', { ctl: { op, seconds: slots.seconds || 600 } }));
-  if (op === 'stop') { dev.screen = 'S0'; sess.activeTask = null; }
+  if (op === 'stop') {
+    dev.screen = 'S0';
+    sess.activeTask = null;
+    // 停止播放后必须重置屏幕态，否则电视重连会用旧的 play_local 把已关掉的影片重新播起来
+    sendToTv(dev, tvCommand(dev.deviceId, 'reset'));
+  }
   track('play', 'player_ctl', { taskId, op });
   sendToUser(sess, userId, agentEvent(sess.sessionId, 'task_result', { speech: '', silent: true }, taskId));
 }

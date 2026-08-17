@@ -23,27 +23,44 @@
     $('s5-overlay').classList.remove('hidden');
   }
 
+  let deviceSecret = localStorage.getItem('lebo_tv_secret') || null;
+
   async function register() {
     const res = await fetch('/api/tv/register', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, name: '客厅的电视' }),
+      body: JSON.stringify({ deviceId, deviceSecret, name: '客厅的电视' }),
     });
     const info = await res.json();
     deviceId = info.deviceId;
+    deviceSecret = info.deviceSecret;
     localStorage.setItem('lebo_tv_device', deviceId);
+    localStorage.setItem('lebo_tv_secret', deviceSecret);
     $('qr-img').src = info.qrDataUrl;
     $('cast-code').textContent = info.castCode.replace(/(\d{3})(\d{3})/, '$1 $2');
     connect();
   }
 
+  let pingTimer = null;
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws?role=tv&device=${encodeURIComponent(deviceId)}`);
+    ws = new WebSocket(`${proto}://${location.host}/ws?role=tv&device=${encodeURIComponent(deviceId)}&secret=${encodeURIComponent(deviceSecret || '')}`);
     ws.onopen = () => { wsRetry = 0; $('net-state').textContent = '● 网络正常'; };
     ws.onmessage = (e) => handle(JSON.parse(e.data));
-    ws.onclose = () => { $('net-state').textContent = '● 重连中'; setTimeout(connect, Math.min(1000 * ++wsRetry, 5000)); };
+    ws.onclose = (ev) => {
+      $('net-state').textContent = '● 重连中';
+      // 服务重启后设备表清空（4004）或密钥不符（4003）：必须重新注册换新二维码，
+      // 否则电视会永久卡在"重连中"，二维码也永远扫不通。
+      if (ev.code === 4004 || ev.code === 4003) {
+        deviceId = null; deviceSecret = null;
+        localStorage.removeItem('lebo_tv_device'); localStorage.removeItem('lebo_tv_secret');
+        setTimeout(() => register().catch(() => setTimeout(register, 3000)), 1000);
+        return;
+      }
+      setTimeout(connect, Math.min(1000 * ++wsRetry, 5000));
+    };
     ws.onerror = () => ws.close();
-    setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ type: 'ping' })), 25000);
+    clearInterval(pingTimer); // 每次重连都新建 interval 会叠加，必须先清
+    pingTimer = setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({ type: 'ping' })), 25000);
   }
   const send = (m) => ws?.readyState === 1 && ws.send(JSON.stringify(m));
 
@@ -160,25 +177,61 @@
     // 无影 Web SDK 接入点：用 stream.instance_id + 后端 GetConnectionTicket 建立 WebRTC，绑定到 #stream-video
   }
 
-  // ---- TTS：优先火山 mp3；无音频用浏览器 speechSynthesis（ttsMode=browser 兜底） ----
+  // ---- TTS：优先火山 mp3；无音频用浏览器 speechSynthesis 兜底 ----
+  // 浏览器自动播放策略：没有用户手势时 audio.play() 与 speechSynthesis 都会被拦截，
+  // 讲解就只剩字幕没有声音。因此首次被拦截时在屏上提示一次"按任意键开启声音"，
+  // 拿到手势后解锁，并把当前这段补播出来。
   const audio = $('tts-audio');
+  let audioUnlocked = false;
+  let pendingTts = null;
+
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    overlay(null);
+    try { audio.play().catch(() => {}); } catch {}
+    if ('speechSynthesis' in window) { try { speechSynthesis.resume(); } catch {} }
+    if (pendingTts) { const t = pendingTts; pendingTts = null; speak(t); }
+  }
+  for (const ev of ['click', 'keydown', 'touchstart', 'pointerdown']) {
+    document.addEventListener(ev, unlockAudio, { once: false, passive: true });
+  }
+
+  function needGesture(tts) {
+    pendingTts = tts;
+    overlay('按遥控器任意键开启声音');
+  }
+
   function speak(tts) {
     if (tts.text) { $('subtitle').textContent = tts.text; }
     stopSpeak();
+    const epoch = tts.epoch;
     if (tts.audio_b64) {
       audio.src = 'data:audio/mp3;base64,' + tts.audio_b64;
-      audio.onended = () => send({ type: 'tts_done' });
-      audio.play().catch(() => browserSpeak(tts.text));
+      audio.onended = () => send({ type: 'tts_done', epoch });
+      audio.onerror = () => browserSpeak(tts.text, epoch);
+      audio.play().then(() => { audioUnlocked = true; })
+        .catch(() => { if (!audioUnlocked) needGesture(tts); else browserSpeak(tts.text, epoch); });
     } else if (tts.text) {
-      browserSpeak(tts.text);
+      browserSpeak(tts.text, epoch);
     }
   }
-  function browserSpeak(text) {
-    if (!('speechSynthesis' in window) || !text) { setTimeout(() => send({ type: 'tts_done' }), 1500); return; }
+
+  function browserSpeak(text, epoch) {
+    // 无语音合成能力（多数老电视浏览器）：按字数估时后再上报，避免讲解瞬间空跑到底
+    if (!('speechSynthesis' in window) || !text) {
+      setTimeout(() => send({ type: 'tts_done', epoch }), Math.max(3000, text ? text.length * 240 : 1500));
+      return;
+    }
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-CN'; u.rate = 1.05;
-    u.onend = () => send({ type: 'tts_done' });
-    speechSynthesis.speak(u);
+    let reported = false;
+    const done = () => { if (!reported) { reported = true; send({ type: 'tts_done', epoch }); } };
+    u.onend = done;
+    // 中文音色缺失/被拦截时 onend 不会触发，讲解会永久卡住 —— 用兜底计时器保底推进
+    u.onerror = () => { if (!audioUnlocked) needGesture({ text, epoch }); else done(); };
+    setTimeout(done, Math.max(4000, text.length * 260));
+    try { speechSynthesis.speak(u); } catch { done(); }
   }
   function stopSpeak() {
     try { audio.pause(); audio.currentTime = 0; } catch {}

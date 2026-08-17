@@ -18,8 +18,10 @@ export function attachGateway(httpServer) {
     const role = params.get('role');
 
     if (role === 'tv') {
-      const dev = attachTvSocket(params.get('device'), socket);
+      const dev = attachTvSocket(params.get('device'), socket, params.get('secret'));
+      // 4004 设备不存在（服务重启后内存态丢失）→ 电视端须重新注册，不能只重连
       if (!dev) return socket.close(4004, 'device_not_found');
+      if (dev.error) return socket.close(4003, 'bad_secret');
       log.info('tv connected', dev.deviceId);
       socket.on('message', (buf) => onTvMessage(dev, buf));
       socket.on('close', () => { if (dev.tvSocket === socket) dev.tvSocket = null; });
@@ -63,9 +65,15 @@ async function onPhoneMessage(sess, userId, buf) {
     switch (msg.type) {
       case 'user_input': {
         // 语音/文字/文件统一入口（6.9.1）
-        const text = msg.input?.asr_text || msg.input?.text || '';
-        if (!text.trim()) return;
-        await handleUserText(sess, userId, text.trim(), { isInterrupt: !!msg.input?.is_interrupt });
+        const text = (msg.input?.asr_text || msg.input?.text || '').trim();
+        const isInterrupt = !!msg.input?.is_interrupt;
+        // 用户一按住说话就先发一个空文本的打断包：必须立刻静音（D-03 ≤500ms），
+        // 不能因为"还没识别出文字"就把它丢掉——那样打断永远不会生效。
+        if (!text) {
+          if (isInterrupt) present.interrupt(sess);
+          return;
+        }
+        await handleUserText(sess, userId, text, { isInterrupt });
         break;
       }
       case 'confirm_outline': // 大纲闸门确认（5.6.1 ③）
@@ -91,7 +99,7 @@ function onTvMessage(dev, buf) {
   const sess = dev.sessionId && getSession(dev.sessionId);
   switch (msg.type) {
     case 'tts_done': // 电视端播完一段讲解 → 推进段落（比估时更准）
-      if (sess) present.onTtsDone(sess);
+      if (sess) present.onTtsDone(sess, msg.epoch);
       break;
     case 'screen_changed':
       dev.screen = msg.screen;

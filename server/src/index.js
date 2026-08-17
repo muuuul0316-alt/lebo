@@ -12,6 +12,7 @@ import { log } from './log.js';
 import { attachGateway } from './gateway.js';
 import { registerDevice, bindPhone, getSession, getDevice } from './sessions.js';
 import { ingest } from './content/ingest.js';
+import { guardUploads } from './assets.js';
 import { recognize, asrAvailable } from './speech/asr.js';
 import * as wuying from './cua/wuying.js';
 
@@ -21,7 +22,8 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 
 // ---- 静态资源 ----
-app.use('/uploads', express.static(config.uploadDir, { maxAge: '1h' }));
+// 私人素材需签名访问（PRD 10.4）：未签名的直链与目录枚举一律拒绝
+app.use('/uploads', guardUploads, express.static(config.uploadDir, { maxAge: '1h', index: false, dotfiles: 'deny' }));
 app.use('/tv', express.static(path.join(REPO, 'tv')));
 app.use('/m', express.static(path.join(REPO, 'phone')));
 
@@ -35,15 +37,26 @@ app.get('/health', (_req, res) => res.json({
 // ---- 电视端：注册并取二维码（TV-01） ----
 app.post('/api/tv/register', async (req, res) => {
   try {
-    const info = await registerDevice({ deviceId: req.body.deviceId, name: req.body.name });
+    const info = await registerDevice({
+      deviceId: req.body.deviceId, name: req.body.name, deviceSecret: req.body.deviceSecret,
+    });
     res.json(info);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ---- 手机 H5：扫码绑定（MP-01；H5 版无需微信授权，用户已确认第一版用 H5） ----
 app.post('/api/phone/bind', (req, res) => {
-  const out = bindPhone({ deviceId: req.body.deviceId, castCode: req.body.castCode, nickname: req.body.nickname });
-  if (out.error) return res.status(404).json(out);
+  const out = bindPhone({
+    deviceId: req.body.deviceId,
+    bindToken: req.body.bindToken,
+    castCode: req.body.castCode,
+    nickname: req.body.nickname,
+    ip: req.ip,
+  });
+  if (out.error) {
+    const code = out.error === 'too_many_attempts' ? 429 : out.error === 'bind_token_invalid' ? 401 : 404;
+    return res.status(code).json(out);
+  }
   res.json(out);
 });
 

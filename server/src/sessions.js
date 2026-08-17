@@ -1,5 +1,6 @@
 // 会话与设备管理：电视注册 → 二维码 → 手机扫码绑定 → 多人控制权（PRD 6.3.4）。
 // 电视端状态由云端会话状态机决定（唯一真相源，PRD 6.7.4），断线重连按云端状态恢复。
+import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { config } from './config.js';
 import { uid } from './store.js';
@@ -13,11 +14,34 @@ function castCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-export async function registerDevice({ deviceId, name }) {
+const secret = () => crypto.randomBytes(24).toString('base64url');
+
+// 投屏码只有 6 位，可被暴力枚举；绑定必须凭二维码里的一次性 bindToken。
+// 投屏码保留仅用于人工报码的兜底场景，并施加尝试频率限制。
+const BIND_TOKEN_TTL = 10 * 60 * 1000;
+const codeAttempts = new Map(); // ip -> {count, resetAt}
+
+export function rateLimitCode(ip) {
+  const now = Date.now();
+  let r = codeAttempts.get(ip);
+  if (!r || now > r.resetAt) { r = { count: 0, resetAt: now + 10 * 60 * 1000 }; codeAttempts.set(ip, r); }
+  r.count++;
+  return r.count <= 10; // 10 分钟内最多 10 次凭码绑定尝试
+}
+
+// 电视端注册：deviceSecret 只在注册响应里下发一次，电视端本地保存，用于 WS 鉴权。
+// 已注册设备再次调用需带上原 deviceSecret，防止他人凭 deviceId 重置设备。
+export async function registerDevice({ deviceId, name, deviceSecret }) {
   let dev = deviceId && devices.get(deviceId);
+  if (dev && dev.deviceSecret !== deviceSecret) {
+    // 设备存在但密钥不符：视为新设备，不允许劫持既有设备
+    dev = null;
+    deviceId = null;
+  }
   if (!dev) {
     dev = {
-      deviceId: deviceId || uid('tv'),
+      deviceId: uid('tv'),
+      deviceSecret: secret(),
       name: name || '客厅的电视',
       castCode: castCode(),
       tvSocket: null,
@@ -28,10 +52,17 @@ export async function registerDevice({ deviceId, name }) {
     devices.set(dev.deviceId, dev);
   }
   dev.name = name || dev.name;
-  const joinUrl = `${config.publicBaseUrl}/m/?d=${encodeURIComponent(dev.deviceId)}&c=${dev.castCode}`;
+  // 一次性绑定令牌：二维码每次刷新即轮换，扫码绑定后作废（E-01 码刷新）
+  dev.bindToken = secret();
+  dev.bindTokenExp = Date.now() + BIND_TOKEN_TTL;
+
+  const joinUrl = `${config.publicBaseUrl}/m/?d=${encodeURIComponent(dev.deviceId)}&t=${dev.bindToken}`;
   const qrDataUrl = await QRCode.toDataURL(joinUrl, { margin: 1, scale: 8 });
   track('entry', 'qr_issued', { deviceId: dev.deviceId });
-  return { deviceId: dev.deviceId, name: dev.name, castCode: dev.castCode, joinUrl, qrDataUrl };
+  return {
+    deviceId: dev.deviceId, deviceSecret: dev.deviceSecret, name: dev.name,
+    castCode: dev.castCode, joinUrl, qrDataUrl, bindTokenExpiresIn: BIND_TOKEN_TTL,
+  };
 }
 
 export function getDevice(deviceId) { return devices.get(deviceId); }
@@ -41,9 +72,17 @@ export function findDeviceByCastCode(code) {
   return null;
 }
 
-// 手机扫码绑定：无注册流程，身份即昵称（H5 版；小程序版换 openid）
-export function bindPhone({ deviceId, castCode: code, nickname }) {
-  const dev = devices.get(deviceId) || findDeviceByCastCode(code);
+// 手机扫码绑定：优先凭二维码里的一次性 bindToken；无 token 时才回退到投屏码（受频率限制）。
+export function bindPhone({ deviceId, bindToken, castCode: code, nickname, ip }) {
+  let dev = null;
+  if (bindToken) {
+    const d = devices.get(deviceId);
+    if (d && d.bindToken && d.bindToken === bindToken && Date.now() < d.bindTokenExp) dev = d;
+    else return { error: 'bind_token_invalid' }; // 过期/伪造：让电视刷新二维码重扫
+  } else if (code) {
+    if (ip && !rateLimitCode(ip)) return { error: 'too_many_attempts' };
+    dev = findDeviceByCastCode(code);
+  }
   if (!dev) return { error: 'device_not_found' };
   let sess = dev.sessionId && sessions.get(dev.sessionId);
   if (!sess) {
@@ -102,9 +141,11 @@ export function broadcastUsers(sess, msg) {
     if (u.socket && u.socket.readyState === 1) u.socket.send(JSON.stringify(msg));
 }
 
-export function attachTvSocket(deviceId, socket) {
+// 电视端 WS 接入必须持注册时下发的 deviceSecret，防止凭 deviceId 顶替真电视
+export function attachTvSocket(deviceId, socket, deviceSecret) {
   const dev = devices.get(deviceId);
   if (!dev) return null;
+  if (dev.deviceSecret !== deviceSecret) return { error: 'bad_secret' };
   dev.tvSocket = socket;
   // 断线重连：用最后一条 tv_command 恢复画面（协议幂等性要求）
   if (dev.lastTvCommand) socket.send(JSON.stringify(dev.lastTvCommand));

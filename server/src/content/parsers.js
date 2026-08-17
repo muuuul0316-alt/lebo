@@ -47,9 +47,14 @@ export function parsePptx(filePath, extractDir) {
       for (const m of relXml.matchAll(/Target="\.\.\/media\/([^"]+)"/g)) {
         const mediaEntry = zip.getEntry(`ppt/media/${m[1]}`);
         if (mediaEntry && IMG_EXT.includes(path.extname(m[1]).toLowerCase())) {
-          const out = path.join(extractDir, `p${pageNo}_${m[1]}`);
-          fs.writeFileSync(out, mediaEntry.getData());
-          images.push(out);
+          // zip-slip 防护：Target 来自文件内部，可含 ../ 或绝对路径。
+          // 只取 basename 并复核最终路径仍在 extractDir 内，避免以服务身份任意写盘。
+          const safeName = path.basename(m[1]).replace(/[^\w.\-]/g, '_');
+          const out = path.join(extractDir, `p${pageNo}_${safeName}`);
+          const resolved = path.resolve(out);
+          if (!resolved.startsWith(path.resolve(extractDir) + path.sep)) continue;
+          fs.writeFileSync(resolved, mediaEntry.getData());
+          images.push(resolved);
         }
       }
     }

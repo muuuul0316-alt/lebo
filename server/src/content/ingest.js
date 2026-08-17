@@ -10,6 +10,7 @@ import { log } from '../log.js';
 import { agentEvent } from '../protocol.js';
 import { broadcastUsers } from '../sessions.js';
 import * as parsers from './parsers.js';
+import { assetUrl } from '../assets.js';
 import { generateSkill, makeOutlineLLM } from './skill.js';
 
 const packages = loadJson('packages', {}); // packageId -> pkg（含 assets 与 skill）
@@ -28,7 +29,8 @@ export function latestAssets(sess, n = 6) {
   return [];
 }
 
-function assetUrl(relPath) { return `${config.publicBaseUrl}/uploads/${relPath}`; }
+// 素材 URL 逐段编码 + HMAC 签名（见 assets.js）：
+// 编码解决文件名含 % # ? 空格导致的加载失败；签名防止私人内容被枚举或直链外泄。
 
 function stage(sess, packageId, stageName, detail) {
   broadcastUsers(sess, agentEvent(sess.sessionId, 'ingest_progress', { packageId, stage: stageName, detail }));
@@ -53,14 +55,17 @@ export async function ingest(sess, userId, files) {
         const zip = new AdmZip(f.path);
         for (const e of zip.getEntries()) {
           if (e.isDirectory || e.entryName.startsWith('__MACOSX')) continue;
-          const base = path.basename(e.entryName);
+          const base = path.basename(e.entryName); // 只取文件名，杜绝 ../ 目录穿越
           if (!parsers.isSupported(base)) continue;
-          const out = path.join(pkgDir, `${flat.length}_${base}`);
+          const out = path.join(pkgDir, `${flat.length}_${base.replace(/[/\\]/g, '_')}`);
+          if (!path.resolve(out).startsWith(path.resolve(pkgDir) + path.sep)) continue;
           fs.writeFileSync(out, e.getData());
           flat.push({ name: base, path: out });
         }
       } catch (e) {
         pkg.failures.push({ file: name, reason: '压缩包打不开，可能损坏或加密' }); // E-21
+      } finally {
+        fs.unlink(f.path, () => {}); // 解压后清掉 multer 临时文件，否则会一直堆在磁盘上
       }
     } else {
       const out = path.join(pkgDir, `${flat.length}_${path.basename(name)}`);

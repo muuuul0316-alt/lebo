@@ -28,6 +28,9 @@ export async function startPresentation(sess, userId, { taskId } = {}) {
     sendToUser(sess, userId, agentEvent(sess.sessionId, 'error', { speech: '内容还没备好课，稍等一下或重新上传。' }, taskId));
     return;
   }
+  // 重开讲解前必须清掉上一场的定时器，否则遗留 timer 会继续推进旧讲解，
+  // 导致电视重复渲染、同一段被重念。
+  if (sess.present?.timer) clearTimeout(sess.present.timer);
   // Skill 复用（6.11）：同一包再次讲解直接加载，二次讲解 Token 下降 ≥70%
   sess.present = {
     state: 'PRESENTING', pkg, skill: pkg.skill,
@@ -53,11 +56,18 @@ async function playSection(sess) {
     ? layout('L1', [assetPane(assets[0])])
     : layout('L1', [{ slot: 'main', kind: 'text_card', title: sec.point, text: '' }]);
   const narration = sec.narration || sec.point;
+  const sectionAtStart = p.section;
   const audio = await synthesize(narration);
+  // TTS 合成是网络调用，期间用户可能已打断或跳段。恢复执行后必须复检，
+  // 否则电视会在用户打断后又开口，且推进逻辑会错乱（讲解僵死/跳段）。
+  if (sess.present !== p || p.state !== 'PRESENTING' || p.section !== sectionAtStart) return;
+
+  p.epoch = (p.epoch || 0) + 1; // 段落纪元：tts_done 必须带同一 epoch 才算数
+  const epoch = p.epoch;
   sendToTv(dev, tvCommand(dev.deviceId, 'render', {
     layout: lay,
-    presenting: { section: p.section + 1, total: p.skill.outline.length, point: sec.point },
-    tts: { text: narration, audio_b64: audio, sync_with: 'layout' },
+    presenting: { section: p.section + 1, total: p.skill.outline.length, point: sec.point, epoch },
+    tts: { text: narration, audio_b64: audio, sync_with: 'layout', epoch },
   }));
   dev.screen = 'S3';
 
@@ -69,7 +79,11 @@ async function playSection(sess) {
   // 段落推进：按 TTS 估时驱动；电视端 tts_done 事件可提前触发
   const ms = estimateMs(narration, sec.est_duration_s);
   clearTimeout(p.timer);
-  p.timer = setTimeout(() => { p.section++; playSection(sess).catch((e) => log.error(e)); }, ms);
+  p.timer = setTimeout(() => {
+    if (sess.present !== p || p.state !== 'PRESENTING' || p.section !== sectionAtStart) return;
+    p.section++;
+    playSection(sess).catch((e) => log.error(e));
+  }, ms);
 }
 
 function finish(sess) {
@@ -243,11 +257,18 @@ export async function control(sess, userId, op) {
   track('present', 'control', { op });
 }
 
-// 电视端播完一段 TTS 主动上报，提前推进（比估时更准）
-export function onTtsDone(sess) {
+// 电视端播完一段 TTS 主动上报，提前推进（比估时更准）。
+// 必须校验 epoch：电视端任何一次 TTS 结束（含即时反馈语、问答回答、浏览器兜底的
+// 立即 onend）都会上报，不校验就会让整场讲解飞速空跑。
+export function onTtsDone(sess, epoch) {
   const p = sess.present;
-  if (p && p.state === 'PRESENTING') {
-    clearTimeout(p.timer);
-    p.timer = setTimeout(() => { p.section++; playSection(sess).catch(() => {}); }, 800);
-  }
+  if (!p || p.state !== 'PRESENTING') return;
+  if (epoch !== undefined && epoch !== p.epoch) return; // 不是当前段落的播报
+  const sectionAtDone = p.section;
+  clearTimeout(p.timer);
+  p.timer = setTimeout(() => {
+    if (sess.present !== p || p.state !== 'PRESENTING' || p.section !== sectionAtDone) return;
+    p.section++;
+    playSection(sess).catch(() => {});
+  }, 800);
 }

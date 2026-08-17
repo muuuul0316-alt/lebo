@@ -10,8 +10,12 @@ WorkingDirectory=/opt/lebo/server
 ExecStart=/usr/bin/node src/index.js
 Restart=always
 RestartSec=3
-StandardOutput=append:/var/log/lebo.log
-StandardError=append:/var/log/lebo.log
+# 限制重启频率：配置错误时会无限重启，既刷爆日志也拖垮机器
+StartLimitIntervalSec=60
+StartLimitBurst=5
+# 交给 journald（自带轮转与容量上限），不要直接 append 到文件把磁盘写满
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
