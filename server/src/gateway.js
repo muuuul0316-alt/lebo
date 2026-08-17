@@ -2,7 +2,8 @@
 // 手机 → 云端：user_input（PRD 6.9.1）；云端 → 手机/电视：agent_event / tv_command。
 import { WebSocketServer } from 'ws';
 import { URL } from 'node:url';
-import { attachTvSocket, attachUserSocket, getSession } from './sessions.js';
+import { attachTvSocket, attachUserSocket, getSession, broadcastUsers } from './sessions.js';
+import { agentEvent } from './protocol.js';
 import { handleUserText, confirmOutline } from './brain/executor.js';
 import * as present from './present/engine.js';
 import { registerCuaAgent } from './cua/agentLoop.js';
@@ -105,7 +106,14 @@ function onTvMessage(dev, buf) {
       dev.screen = msg.screen;
       break;
     case 'play_event': // 起播成功/失败/结束
-      track('play', msg.event, { deviceId: dev.deviceId });
+      track('play', msg.event, { deviceId: dev.deviceId, reason: msg.reason });
+      // 起播失败必须让手机知道，否则手机会一直显示"开始了"而电视是黑的
+      if (msg.event === 'play_fail' && sess) {
+        broadcastUsers(sess, agentEvent(sess.sessionId, 'error', {
+          speech: '这个片子没放起来。说"换一个"我再找一个。',
+          actions: ['next_one'],
+        }));
+      }
       break;
     case 'ping':
       dev.tvSocket?.send(JSON.stringify({ type: 'pong' }));

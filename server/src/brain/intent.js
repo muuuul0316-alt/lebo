@@ -17,6 +17,8 @@ export const INTENTS = [
 
 const RULES = [
   [/^(暂停|停一下|快进|快退|倒回|换一集|下一集|上一集|关掉|停止播放|从头播|接着播|继续播)/, 'control_playback'],
+  // 停止类短句必须在其它规则之前命中，否则会被当成提问（用户叫不停）
+  [/^(停|停下|停下来|先停|别讲了?|不要讲了?|不讲了|别说了|闭嘴|安静|结束讲解|停止讲解)$/, 'control_session'],
   [/(重讲|换个讲法|换个说法|慢一点|快一点|继续讲|接着讲|开始讲|你来讲|讲下一段|上一段|结束讲解)/, 'control_session'],
   [/(放大|缩小|并排|分屏|全屏|回到刚才)/, 'control_layout'],
   [/(做成|帮我做|生成).*(ppt|PPT|演示|文档|表格)|做一份/, 'make_content'],
@@ -58,7 +60,7 @@ function withSlots(intent, text, _ctx) {
     if (/你来讲|开始讲/.test(text)) slots.op = 'start_present';
     else if (/继续|接着/.test(text)) slots.op = 'resume';
     else if (/重讲/.test(text)) slots.op = 'restart';
-    else if (/结束/.test(text)) slots.op = 'stop';
+    else if (/^(停|停下|停下来|先停|别讲|不要讲|不讲了|别说|闭嘴|安静)|结束|停止/.test(text)) slots.op = 'stop';
     else if (/下一段/.test(text)) slots.op = 'next';
     else if (/上一段/.test(text)) slots.op = 'prev';
     else slots.op = 'style';

@@ -30,20 +30,41 @@ printf '\033[1m乐播·龙虾脑 一键上线\033[0m  目录=%s  域名=%s\n' "$
 # ---------- 1. 基础软件 ----------
 step "安装运行环境"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -y >>"$LOG" 2>&1 || warn "apt-get update 有告警，继续（见日志）"
+# 锁超时：刚开机的云主机常有 unattended-upgrades 占着 dpkg 锁，直接装会以 100 退出
+APT="apt-get -o DPkg::Lock::Timeout=300 -y"
+# update 失败不致命（机器上常有失效的第三方源），但要留痕
+$APT update >>"$LOG" 2>&1 || warn "apt update 有告警（可能存在失效的第三方源），继续"
 
-if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -lt 20 ]; then
-  echo "  正在安装 Node.js 20（约 1 分钟）…"
-  if ! curl -fsSL https://deb.nodesource.com/setup_20.x 2>>"$LOG" | bash - >>"$LOG" 2>&1; then
-    die "Node.js 源配置失败。多半是服务器连不上外网（DNS 或安全组）。日志末尾：$(tail -3 "$LOG" | tr '\n' ' ')"
+# 最小化镜像可能连 curl / ca-certificates 都没有，而下一步就要用 curl
+for pkg in curl ca-certificates; do
+  command -v "${pkg%%-*}" >/dev/null 2>&1 && continue
+  $APT install "$pkg" >>"$LOG" 2>&1 || true
+done
+command -v curl >/dev/null 2>&1 || die "缺少 curl 且自动安装失败。请先执行： apt-get install -y curl ca-certificates"
+
+NODE_MAJOR_MIN=20
+NODE_SETUP_VER=22   # Node 20 已于 2026-04 EOL，新装一律用 22
+if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -lt "$NODE_MAJOR_MIN" ]; then
+  echo "  正在安装 Node.js ${NODE_SETUP_VER}（约 1 分钟）…"
+  if ! curl -fsSL "https://deb.nodesource.com/setup_${NODE_SETUP_VER}.x" 2>>"$LOG" | bash - >>"$LOG" 2>&1; then
+    die "Node.js 源配置失败，多半是服务器连不上外网（DNS 或安全组）。日志末尾：$(tail -3 "$LOG" | tr '\n' ' ')"
   fi
-  apt-get install -y nodejs >>"$LOG" 2>&1 || die "Node.js 安装失败。日志末尾：$(tail -3 "$LOG" | tr '\n' ' ')"
+  if ! $APT install nodejs >>"$LOG" 2>&1; then
+    # 发行版自带的 npm 包会与 nodesource 的 nodejs 冲突（overwrite /usr/include/node/...）
+    if grep -q "trying to overwrite" "$LOG"; then
+      warn "检测到发行版 npm 包冲突，正在移除后重试"
+      $APT remove npm >>"$LOG" 2>&1 || true
+      $APT install nodejs >>"$LOG" 2>&1 || die "Node.js 安装失败。日志末尾：$(tail -5 "$LOG" | tr '\n' ' ')"
+    else
+      die "Node.js 安装失败。日志末尾：$(tail -5 "$LOG" | tr '\n' ' ')"
+    fi
+  fi
 fi
 command -v node >/dev/null 2>&1 || die "Node.js 仍不可用"
 ok "Node.js $(node -v)"
 
 if ! command -v nginx >/dev/null 2>&1; then
-  apt-get install -y nginx >>"$LOG" 2>&1 || die "nginx 安装失败。日志末尾：$(tail -3 "$LOG" | tr '\n' ' ')"
+  $APT install nginx >>"$LOG" 2>&1 || die "nginx 安装失败。日志末尾：$(tail -3 "$LOG" | tr '\n' ' ')"
 fi
 ok "nginx 已就绪"
 
@@ -169,19 +190,33 @@ fi
 HTTPS_OK=0
 if [ -n "$DOMAIN" ]; then
   step "申请 HTTPS 证书"
-  command -v certbot >/dev/null 2>&1 || apt-get install -y certbot python3-certbot-nginx >>"$LOG" 2>&1
-  if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos \
-       -m "admin@$DOMAIN" --redirect >>"$LOG" 2>&1; then
+  command -v certbot >/dev/null 2>&1 || $APT install certbot python3-certbot-nginx >>"$LOG" 2>&1
+  # --keep-until-expiring：已有未到期证书时不报错，保证重跑幂等
+  certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos \
+    -m "admin@$DOMAIN" --redirect --keep-until-expiring >>"$LOG" 2>&1 || true
+  nginx -t >>"$LOG" 2>&1 && systemctl reload nginx >>"$LOG" 2>&1
+
+  # 判据用「事实」而不是 certbot 退出码：证书文件在 + 443 真的有人听。
+  # 只看退出码会让已签过证的机器在重跑时被降级回 http。
+  if [ -s "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ] && ss -ltn 2>/dev/null | grep -q ':443 '; then
     HTTPS_OK=1
+  fi
+
+  if [ "$HTTPS_OK" = "1" ]; then
     PUBLIC_URL="https://$DOMAIN"
-    set_env PUBLIC_BASE_URL "$PUBLIC_URL"
-    systemctl restart lebo
     ok "HTTPS 已启用"
   else
-    warn "证书申请失败（域名未解析到本机？80 端口未放行？）"
-    warn "详见 $LOG；修好后执行： certbot --nginx -d $DOMAIN && systemctl restart lebo"
+    warn "HTTPS 未启用，继续用 $PUBLIC_URL（此模式下手机「按住说话」不可用，只能打字）"
+    warn "排查：1) dig +short $DOMAIN 是否等于本机公网 IP  2) 安全组/ufw 放行 80 与 443"
+    warn "      3) 修好后执行： certbot --nginx -d $DOMAIN --redirect && systemctl restart lebo"
+    warn "证书日志见 $LOG"
   fi
 fi
+
+# 地址最终确定后再回写 .env 并重启，确保二维码与素材 URL 都用同一个地址
+set_env PUBLIC_BASE_URL "$PUBLIC_URL"
+systemctl restart lebo
+sleep 2
 
 # ---------- 8. 连通性自检 ----------
 step "外部可访问性自检"

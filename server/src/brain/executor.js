@@ -14,11 +14,12 @@ import * as present from '../present/engine.js';
 import * as content from '../content/ingest.js';
 import * as cua from '../cua/wuying.js';
 
-// 演示片源（合法内容；正式片源体系见 PRD Q-09，由内容合作方接入）
+// 演示片源（开源授权内容）。正式片源体系见 PRD Q-09，由内容合作方接入。
+// 注意：默认源在国内网络多不可达，上线务必用 DEMO_MEDIA_JSON 配置成你自己可达的地址，
+// 否则手机会提示起播失败（不会再出现"手机说开始了、电视却黑屏"）。
 const DEFAULT_MEDIA = [
-  { title: '大雄兔', keywords: ['大雄兔', 'big buck bunny', '兔子', '动画'], url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' },
-  { title: 'Sintel', keywords: ['sintel', '辛特尔', '龙'], url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4' },
-  { title: '钢铁之泪', keywords: ['钢铁之泪', 'tears of steel', '科幻'], url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4' },
+  { title: '大雄兔', keywords: ['大雄兔', 'big buck bunny', '兔子', '动画'], url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' },
+  { title: '测试短片', keywords: ['测试', '短片', 'demo'], url: 'https://media.w3.org/2010/05/bunny/movie.mp4' },
 ];
 
 function mediaLibrary() {
@@ -63,6 +64,28 @@ export async function handleUserText(sess, userId, text, { isInterrupt = false }
   };
   const intentResult = await classify(text, ctx);
   track('intent', 'classified', { taskId, intent: intentResult.intent, confidence: intentResult.confidence });
+
+  // 「停」「别讲了」「闭嘴」必须无条件叫得停。这类短句原本落到 unknown，
+  // 在讲解态会被当成提问继续讲，用户喊破喉咙也停不下来。
+  // ASR 默认带标点（"停。"），先去尾部标点再匹配。
+  const norm = text.trim().replace(/[。．.！!？?，,、~～\s]+$/g, '');
+  if (/^(停|停下|停下来|先停|别讲了?|不要讲了?|不讲了|别说了|不要说了|闭嘴|安静|结束|结束讲解|停止讲解|关掉|关了)$/.test(norm)) {
+    const p = sess.present;
+    if (p && p.state !== 'DONE') {
+      present.interrupt(sess);                     // 先保证 ≤500ms 静音
+      await present.control(sess, userId, 'stop'); // finish() 会广播 present_done，手机收起控制条
+    } else if (dev) {
+      // 非讲解态（看电影/待机）：停播并回到待机，且必须自己发反馈，不能静默
+      sendToTv(dev, tvCommand(dev.deviceId, 'player_ctl', { ctl: { op: 'stop' } }));
+      sendToTv(dev, tvCommand(dev.deviceId, 'reset'));
+      dev.screen = 'S0';
+      sess.activeTask = null;
+    }
+    takeControl(sess, userId); // 叫停人人可用，故先执行再接管控制权
+    sendToUser(sess, userId, agentEvent(sess.sessionId, 'task_result', { speech: '好，停了' }, taskId));
+    track('exec', 'hard_stop', { taskId, presenting: !!(p && p.state !== 'DONE') });
+    return;
+  }
 
   // 讲解态下的自由提问 → 问答通道（先查包内证据，再联网，PRD 6.19）
   if (ctx.presenting && !['control_session', 'control_playback', 'control_layout'].includes(intentResult.intent)) {

@@ -175,6 +175,43 @@ test('电视端重连恢复最后画面', async () => {
   tv2.close(); phone.close();
 });
 
+// 讲解中必须叫得停（原本"停"被当成提问，用户喊破喉咙也停不下来）
+test('讲解中说「停」立刻停止讲解', async () => {
+  const { tv, phone, bind } = await setup();
+  const boundary = '----lebostop';
+  const body = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="sessionId"\r\n\r\n${bind.sessionId}\r\n` +
+    `--${boundary}\r\nContent-Disposition: form-data; name="userId"\r\n\r\n${bind.userId}\r\n` +
+    `--${boundary}\r\nContent-Disposition: form-data; name="files"; filename="讲稿.txt"\r\nContent-Type: text/plain\r\n\r\n第一段内容。\n\n第二段内容。\n\n第三段内容。\r\n` +
+    `--${boundary}--\r\n`, 'utf8');
+  await new Promise((resolve, reject) => {
+    const req = http.request(`${BASE}/api/content/upload`, { method: 'POST', headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length } }, (res) => { res.on('data', () => {}); res.on('end', resolve); });
+    req.on('error', reject); req.write(body); req.end();
+  });
+  await waitFor(phone, (m) => m.event === 'ingest_done', 8000);
+  say(phone, '你来讲');
+  await waitFor(phone, (m) => m.event === 'presenting', 6000);
+
+  // 带标点的「停。」也必须生效（火山 ASR 默认返回带标点文本）
+  say(phone, '停。');
+  const done = await waitFor(phone, (m) => m.event === 'present_done', 3000);
+  assert.ok(done, '说“停”后必须结束讲解');
+  const muted = await waitFor(tv, (m) => m.command === 'overlay' && m.ctl?.op === 'mute_tts', 2000);
+  assert.ok(muted, '必须先静音');
+  tv.close(); phone.close();
+});
+
+// 起播失败必须回传手机，不能电视黑屏而手机说"开始了"
+test('起播失败时手机收到明确告知', async () => {
+  const { tv, phone } = await setup();
+  say(phone, '看个电影');
+  await waitFor(tv, (m) => m.command === 'play_local');
+  tv.send(JSON.stringify({ type: 'play_event', event: 'play_fail', reason: 'NotAllowedError' }));
+  const err = await waitFor(phone, (m) => m.event === 'error' && /没放起来/.test(m.payload?.speech || ''), 3000);
+  assert.ok(err.payload.actions.includes('next_one'), '应提供换一个的出路');
+  tv.close(); phone.close();
+});
+
 // ---- 安全回归：鉴权必须真的拦得住 ----
 test('安全：伪造 bindToken 无法绑定他人电视', async () => {
   const { json: dev } = await postJson(`${BASE}/api/tv/register`, { name: '别人家的电视' });

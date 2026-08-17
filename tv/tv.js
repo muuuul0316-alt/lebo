@@ -147,14 +147,41 @@
 
   // ---- 本地播放器（TV-03；7.4 视频不走串流） ----
   const player = $('player');
-  function playLocal(play) {
+  let lastPlayFail = '';
+
+  // 电视端从打开到起播通常没有任何用户手势，未静音的 video.play() 必被自动播放策略拒绝。
+  // 因此先静音起播保证"有画面"，声音等拿到手势再开——注意不能在无手势时取消静音，
+  // 那样浏览器会直接把视频暂停，比黑屏更糟。
+  async function playLocal(play) {
     if (!play?.url) return;
     show('s2');
-    player.src = play.url; player.currentTime = (play.start_at_ms || 0) / 1000;
-    player.play().then(() => send({ type: 'play_event', event: 'play_ok' }))
-      .catch(() => send({ type: 'play_event', event: 'play_fail' }));
+    lastPlayFail = '';
+    player.src = play.url;
+    player.currentTime = (play.start_at_ms || 0) / 1000;
+    player.muted = !audioUnlocked;
     send({ type: 'screen_changed', screen: 'S2' });
+    try {
+      await player.play();
+      send({ type: 'play_event', event: 'play_ok' });
+      if (player.muted) overlay('按遥控器任意键开启声音');
+      else overlay(null);
+    } catch (e) {
+      // 失败必须让用户看得见：电视端自己先说话，同时回传手机（否则手机会谎报"开始了"）
+      reportPlayFail(e?.name || 'play_error', '这个片子没放起来，看手机换一个');
+    }
   }
+  // 同一次播放只上报一次失败：play() 的 reject 与 media error 事件常会先后各触发一次
+  function reportPlayFail(reason, tip) {
+    if (lastPlayFail) return;
+    lastPlayFail = reason;
+    overlay(tip);
+    send({ type: 'play_event', event: 'play_fail', reason });
+  }
+  // 片源不可达/解码失败同样要有反馈，不能静默黑屏
+  player.addEventListener('error', () => {
+    if (!player.src) return; // stopPlayer 清空 src 时浏览器也会抛 error，忽略
+    reportPlayFail('media_error', '这个片源打不开，看手机换一个');
+  });
   function playerCtl(ctl) {
     if (!ctl) return;
     const toast = (t) => { const el = $('player-toast'); el.textContent = t; el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 1500); };
@@ -191,6 +218,13 @@
     overlay(null);
     try { audio.play().catch(() => {}); } catch {}
     if ('speechSynthesis' in window) { try { speechSynthesis.resume(); } catch {} }
+    // 拿到手势后补救视频：静音播放中的取消静音，被策略挡住的重新起播
+    if (player.src) {
+      if (player.muted) player.muted = false;
+      if (player.paused) player.play().catch(() => {});
+    }
+    // 若失败原因不是策略拦截（片源本身不可达），按键并不能解决，提示要保留
+    if (lastPlayFail === 'media_error') overlay('这个片源打不开，看手机换一个');
     if (pendingTts) { const t = pendingTts; pendingTts = null; speak(t); }
   }
   for (const ev of ['click', 'keydown', 'touchstart', 'pointerdown']) {
