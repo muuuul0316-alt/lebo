@@ -15,6 +15,9 @@ on:
         required: false
         default: '340'
 
+permissions:
+  contents: write   # 把预览地址提交回仓库，便于在 job 运行期间取到（运行中的 job 日志 API 返回 404）
+
 jobs:
   preview:
     runs-on: ubuntu-latest
@@ -117,6 +120,36 @@ jobs:
             echo "> 未配置任何 API Key，以 mock 演示模式运行：扫码连接、下指令、看电影、"
             echo "> 上传文件讲解、打断提问、说“停”，完整链路都能走通。"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 运行中的 job 日志 API 返回 404，因此把地址提交回仓库，让外部能立即取到
+      - name: 发布预览地址
+        env:
+          URL: ${{ steps.tunnel.outputs.url }}
+        run: |
+          set -euo pipefail
+          cat > PREVIEW.md <<EOF
+          # 乐播·龙虾脑 在线预览
+
+          最近一次预览启动：$(date -u '+%Y-%m-%d %H:%M') UTC
+          运行编号：${{ github.run_id }}
+
+          | 端 | 地址 |
+          |---|---|
+          | 电视端（显示二维码） | $URL/tv/ |
+          | 手机端（扫码或直接打开） | $URL/m/ |
+
+          临时地址，本次约在线 ${{ github.event.inputs.minutes }} 分钟后自动关闭。
+          未配置 API Key，以 mock 演示模式运行，完整交互链路可跑通。
+          EOF
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PREVIEW.md
+          git commit -m "chore: 发布在线预览地址（run ${{ github.run_id }}）" || exit 0
+          for i in 1 2 3; do
+            git pull --rebase -q origin "${{ github.ref_name }}" && git push origin HEAD:"${{ github.ref_name }}" && break
+            sleep 3
+          done
+          echo "预览地址已提交：$URL"
 
       - name: 保持在线
         env:
