@@ -31,10 +31,26 @@ const KEEP = {
   ],
 };
 
-async function getJson(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000), headers: { accept: 'application/json' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
-  return res.json();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// 阿里云元数据接口有限流，失败按指数退避重试
+async function getJson(url, retries = 4) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(30000),
+        headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 lebo-api-fetch' },
+      });
+      if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+      if (i < retries) await sleep(1500 * Math.pow(2, i)); // 1.5s→3s→6s→12s
+    }
+  }
+  throw lastErr;
 }
 
 async function versionsOf(product) {
@@ -102,6 +118,7 @@ async function fetchProduct(product, knownVersions) {
       const f = path.join(OUT, `${product}-${ver}.json`);
       fs.writeFileSync(f, JSON.stringify(out, null, 1));
       console.log(`  ✓ 已保存 ${path.relative(ROOT, f)}（精选 ${out.picked_count} 个）`);
+      await sleep(2000);
     } catch (e) {
       console.log(`  ${ver}: 抓取失败 ${e.message}`);
     }
@@ -113,4 +130,7 @@ await fetchProduct('eds-aic', ['2023-09-30', '2024-01-01']);
 
 const files = fs.readdirSync(OUT).filter((f) => f.endsWith('.json'));
 console.log(`\n完成，共 ${files.length} 个元数据文件：`, files.join(', '));
-if (!files.length) process.exit(1);
+if (!files.length) {
+  console.error('未能抓到任何元数据（可能被限流）。稍后重跑本 workflow 即可。');
+  process.exit(1);
+}

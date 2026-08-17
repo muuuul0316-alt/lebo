@@ -85,6 +85,16 @@ jobs:
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
 
+      # 备份通道：即使提交失败，也能通过 artifact 取回抓到的数据
+      - name: 上传元数据 artifact
+        if: github.event.inputs.action == 'fetch-api-meta'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-api-meta
+          path: docs/api-meta/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: 提交 API 元数据
         if: github.event.inputs.action == 'fetch-api-meta'
         run: |
