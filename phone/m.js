@@ -46,12 +46,28 @@
   function greet() {
     if (greeted) return; greeted = true;
     // 话术库 C-01
-    addMsg('xiaole', '我是小乐。手机里的东西我都能投到电视上；你想在电视上显示什么，只要你说得出来，我就做得到。');
+    const el = addMsg('xiaole', '我是小乐。手机里的东西我都能投到电视上；你想在电视上显示什么，只要你说得出来，我就做得到。');
+    // 首条气泡挂小乐头像（Seedream 生成时启用）
+    probeImg('assets/xiaole-avatar.png', (src) => {
+      if (el.querySelector('.msg-avatar')) return;
+      const av = document.createElement('img'); av.className = 'msg-avatar'; av.src = src; el.prepend(av);
+      document.body.classList.add('has-avatar');
+    });
+    // 空状态插画（信息流仅有问候时）
+    probeImg('assets/empty.png', (src) => {
+      if (feed.querySelector('.empty-illust') || feed.querySelectorAll('.msg').length > 1) return;
+      const im = document.createElement('img'); im.className = 'empty-illust'; im.src = src;
+      feed.appendChild(im);
+    });
   }
+  // Seedream 视觉探测：有图用图、无图回落
+  function probeImg(src, onOk) { const im = new Image(); im.onload = () => onOk(src); im.src = src; }
+  probeImg('assets/bg.png', (src) => { document.body.style.setProperty('--phone-bg', `url(${src})`); document.body.classList.add('has-bg'); });
 
   // ============ 信息流渲染 ============
   const feed = $('feed');
   function addMsg(role, text, opts = {}) {
+    if (role === 'me') feed.querySelector('.empty-illust')?.remove(); // 用户开口后收起空状态插画
     const el = document.createElement('div');
     el.className = 'msg ' + role;
     if (text) el.textContent = text;

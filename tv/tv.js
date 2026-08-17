@@ -188,6 +188,15 @@
   const esc = (s) => String(s).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
+  // Seedream 品牌视觉：探测资源是否已生成（tools/gen-assets.mjs），有则启用，无则回落 CSS。
+  function probeImg(src, onOk) {
+    const im = new Image();
+    im.onload = () => onOk(src);
+    im.src = src;
+  }
+  probeImg('assets/hero-bg.png', (src) => { $('s0').style.setProperty('--hero-bg', `url(${src})`); $('s0').classList.add('has-hero'); });
+  probeImg('assets/xiaole.png', (src) => { $('s0-mascot').src = src; $('s0').classList.add('has-mascot'); });
+
   show('s0');
   register().catch((e) => { overlay('连接服务失败，正在重试…'); console.error(e); setTimeout(register, 3000); });
 })();

@@ -57,6 +57,20 @@ curl https://your.domain.com/health
    服务端也可通过无影 `RunCommand` 自动部署并拉起（`server/src/cua/wuying.js`）。
 4. 串流拉取到电视端按无影 Web SDK 文档联调（`GetConnectionTicket` → WebRTC 绑定 `#stream-video`）。
 
+## 四点五、品牌视觉资源（Seedream 生图，可选）
+
+UI 的功能视觉（配色、布局、控件、待机屏）是手写 CSS/SVG，开箱即用。若要用**火山方舟 Seedream**
+生成品牌视觉（首页背景、小乐吉祥物、空状态插画、聊天头像），在**能连通火山的机器**上执行：
+
+```bash
+ARK_API_KEY=你的Key node tools/gen-assets.mjs
+# 指定更高版本模型（需先在 ARK 控制台开通）：
+ARK_API_KEY=xxx SEEDREAM_MODEL=doubao-seedream-4-0-250920 node tools/gen-assets.mjs
+```
+
+生成的图片落到 `tv/assets/`、`phone/assets/`。前端**有图用图、无图回落 CSS**，所以不生成也不影响功能。
+注意：部分受限网络/沙箱的出口代理会按策略封锁 `ark.cn-beijing.volces.com`（返回 403），此时需在放行环境（如部署服务器或本机）执行本脚本。
+
 ## 五、验证
 
 ```bash

@@ -8,3 +8,7 @@ server/uploads/
 .DS_Store
 dist/
 coverage/
+
+# Seedream 生成的视觉资源（构建产物，按需生成）
+tv/assets/*.png
+phone/assets/*.png

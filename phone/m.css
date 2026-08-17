@@ -15,6 +15,13 @@
 html, body { height: 100%; background: var(--bg); color: var(--ink);
   font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
 .view { position: fixed; inset: 0; display: flex; flex-direction: column; }
+/* Seedream 生成的背景存在时启用（m.js 探测后加 class；未生成保持纯色底） */
+body.has-bg #main-view { background-image: var(--phone-bg); background-size: cover; background-position: top center; }
+.msg.xiaole { position: relative; }
+.msg-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; position: absolute; left: -42px; top: 0; display: none; }
+body.has-avatar .msg.xiaole:first-of-type { margin-left: 42px; }
+body.has-avatar .msg.xiaole:first-of-type .msg-avatar { display: block; }
+.empty-illust { width: 60%; max-width: 240px; margin: 24px auto 8px; display: block; opacity: .9; }
 .hidden { display: none !important; }
 button { font: inherit; cursor: pointer; border: 0; }
 

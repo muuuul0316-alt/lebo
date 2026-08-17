@@ -18,7 +18,12 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg);
 
 /* ---------- S0 待机码 ---------- */
 #s0 { flex-direction: column; align-items: center; justify-content: center; gap: 3vh;
-  background: radial-gradient(120% 90% at 50% 20%, #16233f 0%, var(--bg) 60%); }
+  background: radial-gradient(120% 90% at 50% 20%, #16233f 0%, var(--bg) 60%);
+  background-size: cover; background-position: center; }
+/* Seedream 生成的品牌背景/吉祥物存在时才启用（tv.js 探测后加 class；未生成回落上面的 CSS 渐变） */
+#s0.has-hero { background-image: var(--hero-bg), radial-gradient(120% 90% at 50% 20%, #16233f 0%, var(--bg) 60%); }
+#s0-mascot { width: 14vh; height: 14vh; object-fit: contain; margin-bottom: -1vh; display: none; }
+#s0.has-mascot #s0-mascot { display: block; }
 .brand { font-size: 4.2vh; font-weight: 800; letter-spacing: .1em;
   background: linear-gradient(90deg, var(--brand), var(--brand2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .qr-box { background: #fff; padding: 1.6vh; border-radius: 2vh; box-shadow: 0 2vh 6vh rgba(0,0,0,.5); }
