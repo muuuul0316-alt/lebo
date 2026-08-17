@@ -1,0 +1,23 @@
+{
+  "name": "lebo-longxianao-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "乐播·龙虾脑 服务端：会话网关 + 主脑编排 + 内容理解讲解",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}

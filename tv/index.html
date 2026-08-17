@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乐播 · 小乐（电视端）</title>
+<link rel="stylesheet" href="tv.css">
+</head>
+<body>
+<!-- 状态提示层 S5：浮于任意屏之上 -->
+<div id="s5-overlay" class="overlay hidden">
+  <div class="overlay-card">
+    <div class="overlay-dot"></div>
+    <span id="s5-text">正在连接…</span>
+  </div>
+</div>
+
+<!-- 控制者角标（多人场景，6.3.4） -->
+<div id="controller-badge" class="controller-badge hidden"></div>
+
+<!-- S0 待机二维码屏（默认） -->
+<section id="s0" class="screen active">
+  <div class="brand">乐播 · 小乐</div>
+  <div class="qr-box"><img id="qr-img" alt="微信扫码"></div>
+  <div class="s0-main">微信扫码，然后对它说话</div>
+  <div class="s0-examples" id="s0-examples">「看个电影」「讲讲这份 PPT」「查天气」</div>
+  <div class="s0-foot">
+    <span>投屏码：<b id="cast-code">— — —</b></span>
+    <span id="net-state">● 网络正常</span>
+  </div>
+</section>
+
+<!-- S1 云桌面串流屏 -->
+<section id="s1" class="screen">
+  <div id="stream-holder" class="stream-holder">
+    <div class="stream-hint">云电脑运行中<span class="typing-dots"><i></i><i></i><i></i></span></div>
+    <video id="stream-video" playsinline muted></video>
+  </div>
+</section>
+
+<!-- S2 本地播放屏 -->
+<section id="s2" class="screen">
+  <video id="player" class="player" playsinline></video>
+  <div id="player-toast" class="player-toast hidden"></div>
+</section>
+
+<!-- S3 讲解屏 + S4 多窗口：统一由布局引擎渲染 -->
+<section id="s3" class="screen">
+  <div class="present-bar">
+    <span id="present-title">正在讲</span>
+    <span class="present-state"><span class="live-dot"></span> <span id="present-status">讲解中</span></span>
+    <span id="present-progress"></span>
+  </div>
+  <div id="stage" class="stage layout-L1"><!-- panes 动态渲染 --></div>
+  <div id="subtitle" class="subtitle"></div>
+</section>
+
+<!-- 隐藏音频：播放 TTS（火山返回的 mp3 base64） -->
+<audio id="tts-audio"></audio>
+
+<script src="tv.js"></script>
+</body>
+</html>

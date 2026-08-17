@@ -1,0 +1,16 @@
+[Unit]
+Description=乐播·龙虾脑 服务端
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/lebo/server
+EnvironmentFile=/opt/lebo/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/lebo.log
+StandardError=append:/var/log/lebo.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>小乐</title>
+<link rel="stylesheet" href="m.css">
+</head>
+<body>
+<!-- 连接结果页 P1（首次/失败时） -->
+<div id="connect-view" class="view">
+  <div class="connect-card">
+    <div class="logo">乐播 · 小乐</div>
+    <div id="connect-status" class="connect-status">正在连接电视…</div>
+    <input id="nickname" class="nickname" placeholder="给自己起个名（可选）" maxlength="12">
+    <button id="connect-btn" class="primary-btn">连接电视</button>
+    <div id="connect-hint" class="connect-hint"></div>
+  </div>
+</div>
+
+<!-- P2 主页（唯一常驻页） -->
+<div id="main-view" class="view hidden">
+  <header class="topbar">
+    <span id="device-name" class="device-name">● 已连接</span>
+    <span class="topbar-icons"><a href="#" id="history-btn">历史</a></span>
+  </header>
+
+  <div id="feed" class="feed"><!-- 信息流 --></div>
+
+  <!-- 讲解控制条 P2-c（吸底，讲解时出现） -->
+  <div id="present-ctl" class="present-ctl hidden">
+    <div class="present-ctl-info"><span id="pc-title">正在讲</span><span id="pc-progress"></span></div>
+    <div class="present-ctl-bar"><div id="pc-fill" class="pc-fill"></div></div>
+    <div class="present-ctl-btns">
+      <button data-op="pause">暂停</button>
+      <button data-op="prev">上一段</button>
+      <button data-op="next">下一段</button>
+      <button data-op="stop">结束</button>
+    </div>
+  </div>
+
+  <div class="quickbar" id="quickbar">
+    <button data-cmd="投照片">投照片</button>
+    <button data-cmd="投视频">投视频</button>
+    <button data-cmd="看个电影">看电影</button>
+    <button data-cmd="投文件">投文件</button>
+    <button data-cmd="讲讲我传的PPT">讲PPT</button>
+    <button data-cmd="现在几点了">问一问</button>
+  </div>
+
+  <div class="inputbar">
+    <button id="add-btn" class="add-btn" aria-label="添加内容">＋</button>
+    <button id="talk-btn" class="talk-btn">
+      <span id="talk-label">按住 说话</span>
+      <span id="wave" class="wave hidden"></span>
+    </button>
+    <button id="kb-btn" class="kb-btn" aria-label="键盘">⌨</button>
+  </div>
+</div>
+
+<!-- P2-a 内容添加面板（半屏上拉） -->
+<div id="add-panel" class="panel hidden">
+  <div class="panel-mask"></div>
+  <div class="panel-sheet">
+    <div class="panel-head">添加内容 <span id="add-close" class="panel-close">✕</span></div>
+    <div class="panel-grid">
+      <label class="add-item"><input type="file" id="file-album" accept="image/*,video/*" multiple hidden>相册</label>
+      <label class="add-item"><input type="file" id="file-doc" accept=".ppt,.pptx,.pdf,.doc,.docx,.xls,.xlsx" multiple hidden>文件</label>
+      <div class="add-item" id="add-text">文字</div>
+      <label class="add-item vip"><input type="file" id="file-vip" accept=".zip" hidden>VIP 包</label>
+    </div>
+    <div id="add-selected" class="add-selected"></div>
+    <button id="start-learn" class="primary-btn hidden">开始学习</button>
+  </div>
+</div>
+
+<!-- 文字输入弹层 -->
+<div id="text-modal" class="panel hidden">
+  <div class="panel-mask"></div>
+  <div class="panel-sheet">
+    <div class="panel-head">说点什么 <span id="text-close" class="panel-close">✕</span></div>
+    <textarea id="text-input" class="text-input" placeholder="想让小乐做什么？也可以粘贴一段文字、一道题…"></textarea>
+    <button id="text-send" class="primary-btn">发送</button>
+  </div>
+</div>
+
+<script src="m.js"></script>
+</body>
+</html>
