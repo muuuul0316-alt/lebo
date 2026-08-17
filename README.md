@@ -60,6 +60,10 @@ npm test             # node --test，E2E 覆盖 F-01/F-02/F-04/F-05 + 断线重�
 
 ## 部署上线
 
+**最省事：让 Claude 自动部署** —— 只需在 GitHub 网页添加几个 Secret，见 `docs/AUTODEPLOY.md`。
+
+自己动手：
+
 ```bash
 # 服务器上（仓库 clone 到 /opt/lebo）
 sudo bash deploy/bootstrap.sh
