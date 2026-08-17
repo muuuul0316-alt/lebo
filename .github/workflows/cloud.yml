@@ -22,6 +22,8 @@ on:
           - gen-assets
           - fetch-api-meta
           - phone-status
+          - phone-start
+          - phone-run
       command:
         description: 'desktop-run 时执行的 PowerShell 命令'
         required: false
@@ -52,12 +54,15 @@ jobs:
           WUYING_ACCESS_KEY_SECRET: ${{ secrets.WUYING_ACCESS_KEY_SECRET }}
           WUYING_DESKTOP_ID: ${{ secrets.WUYING_DESKTOP_ID }}
           WUYING_REGION: ${{ secrets.WUYING_REGION || 'cn-shenzhen' }}
+          WUYING_END_USER_ID: ${{ secrets.WUYING_END_USER_ID }}
+          WUYING_DESKTOP_PASSWORD: ${{ secrets.WUYING_DESKTOP_PASSWORD }}
+          PHONE_INSTANCE_ID: ${{ secrets.PHONE_INSTANCE_ID }}
           ACT: ${{ github.event.inputs.action }}
           CMD: ${{ github.event.inputs.command }}
         run: |
           set -euo pipefail
-          if [ -z "${WUYING_ACCESS_KEY_ID:-}" ] || [ -z "${WUYING_DESKTOP_ID:-}" ]; then
-            echo "::error::缺少 Secrets：WUYING_ACCESS_KEY_ID / WUYING_ACCESS_KEY_SECRET / WUYING_DESKTOP_ID"
+          if [ -z "${WUYING_ACCESS_KEY_ID:-}" ]; then
+            echo "::error::缺少 Secrets：WUYING_ACCESS_KEY_ID / WUYING_ACCESS_KEY_SECRET"
             exit 1
           fi
           case "$ACT" in
@@ -67,6 +72,30 @@ jobs:
           esac
           {
             echo "## 云桌面：$ACT"
+            echo '```'
+            cat /tmp/out.txt
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      # ---------- 云手机（Android：只有 App 才有的内容与能力） ----------
+      - name: 云手机操作
+        if: startsWith(github.event.inputs.action, 'phone-')
+        env:
+          WUYING_ACCESS_KEY_ID: ${{ secrets.WUYING_ACCESS_KEY_ID }}
+          WUYING_ACCESS_KEY_SECRET: ${{ secrets.WUYING_ACCESS_KEY_SECRET }}
+          WUYING_REGION: ${{ secrets.WUYING_REGION || 'cn-shenzhen' }}
+          PHONE_INSTANCE_ID: ${{ secrets.PHONE_INSTANCE_ID }}
+          ACT: ${{ github.event.inputs.action }}
+          CMD: ${{ github.event.inputs.command }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WUYING_ACCESS_KEY_ID:-}" ] || [ -z "${PHONE_INSTANCE_ID:-}" ]; then
+            echo "::error::缺少 Secrets：WUYING_ACCESS_KEY_ID / WUYING_ACCESS_KEY_SECRET / PHONE_INSTANCE_ID"
+            exit 1
+          fi
+          node tools/cloud-cli.mjs "$ACT" "$CMD" | tee /tmp/out.txt
+          {
+            echo "## 云手机：$ACT"
             echo '```'
             cat /tmp/out.txt
             echo '```'

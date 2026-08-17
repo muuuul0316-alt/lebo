@@ -48,6 +48,13 @@ export const config = {
     region: env('WUYING_REGION', 'cn-shenzhen'),
     desktopId: env('WUYING_DESKTOP_ID'),
     officeSiteId: env('WUYING_OFFICE_SITE_ID'),
+    endUserId: env('WUYING_END_USER_ID'),      // 取连接凭证用的授权用户
+    password: env('WUYING_DESKTOP_PASSWORD'),
+  },
+  // 无影云手机（eds-aic）：承载只有 App 才有的内容与能力
+  phone: {
+    instanceId: env('PHONE_INSTANCE_ID'),
+    region: env('PHONE_REGION', env('WUYING_REGION', 'cn-shenzhen')),
   },
   cuaAgentToken: env('CUA_AGENT_TOKEN', 'change-me'),
   demoMedia: (() => {

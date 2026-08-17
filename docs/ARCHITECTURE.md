@@ -48,6 +48,27 @@
 4. `present/engine.js` 按 Skill 边讲边展示；打断 ≤500ms 静音 → 先查包内证据 → 未命中联网补证 → 查不到不瞎说（C-09）。
 5. Skill 复用：同包二次讲解直接加载，Token 消耗大幅下降（7.2 目标 ≥70%）。
 
+## 云端执行体：云电脑 + 云手机（PRD 4.2「手 + 环境」层）
+
+两类执行体互补，共同支撑"你说得出来，我就做得到"：
+
+| 执行体 | 产品 | 擅长 | 代码 |
+|---|---|---|---|
+| 云电脑（Windows） | 无影 ecd | 网页操作、Office 出成品、下载文件、跑桌面软件 | `cua/wuying.js` |
+| 云手机（Android） | 无影 eds-aic | **只有 App 才有的内容与能力**（大量国内视频/音乐/生活服务无可用网页版） | `cua/cloudphone.js` |
+
+两者共用签名层 `cua/aliyun.js`（HMAC-SHA1，已用阿里云官方示例校验），接口参数依据
+`docs/api-meta/*.json`——由 GitHub Actions 从阿里云官方元数据抓取，避免凭记忆写错。
+
+关键实现细节：
+- **走 POST 而非 GET**：`RunCommand` 的脚本 Base64 后可达 16KB，GET 查询串必然 414 超长。
+- 数组参数按阿里云 RPC 约定展开为 `Name.1 / Name.2`（`expandArray`）。
+- 拉流到电视：云电脑 `GetConnectionTicket`、云手机 `BatchGetAcpConnectionTicket`，
+  取到 Ticket 后交无影 Web SDK 建连（对应 TV-02）。
+
+运维入口：`tools/cloud-cli.mjs`（status/start/run/ticket/phone-*），
+可在服务器或 GitHub Actions（`.github/workflows/cloud.yml`）上执行。
+
 ## 模型与降级（PRD 7.1）
 
 `brain/llm.js` 统一适配 OpenAI 兼容协议：主用豆包 ARK，备用 DashScope。

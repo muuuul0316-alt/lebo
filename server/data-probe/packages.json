@@ -1,0 +1,42 @@
+{
+ "pkg_mswwxkk8d6dkp8": {
+  "packageId": "pkg_mswwxkk8d6dkp8",
+  "userId": "u_mswwxkk0hr9vgi",
+  "createdAt": 1786951747160,
+  "files": [
+   "材料.txt"
+  ],
+  "assets": [
+   {
+    "id": "as_mswwxkk90nzzwu",
+    "kind": "doc_page",
+    "from": "材料.txt#s1",
+    "caption": "第一段内容讲的是背景。",
+    "text": "第一段内容讲的是背景。\n第二段讲方案。\n第三段讲数据，2026年60万日活。"
+   }
+  ],
+  "failures": [],
+  "skill": {
+   "skill_id": "sk_mswwxkkasby679",
+   "package_id": "pkg_mswwxkk8d6dkp8",
+   "generated_at": "2026-08-17T07:29:07.162Z",
+   "outline": [
+    {
+     "section": 1,
+     "point": "先说结论：这份材料想讲什么",
+     "narration": "第一段内容讲的是背景。第二段讲方案。第三段讲数据，2026年60万日活。",
+     "show": [
+      "as_mswwxkk90nzzwu"
+     ],
+     "est_duration_s": 45
+    }
+   ],
+   "qa_index": [],
+   "fallback": {
+    "search_web": false,
+    "must_label_source": true,
+    "max_latency_ms": 8000
+   }
+  }
+ }
+}

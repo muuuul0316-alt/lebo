@@ -2,7 +2,7 @@
 // 职责：实例生命周期（7.5 调度）、PowerShell 命令下发（部署/驱动 cua-agent）、串流 Ticket。
 // CUA 决策循环（截屏→模型判读→动作，6.15.1）由 agentLoop.js 驱动云桌面内的 cua-agent 完成。
 import { config } from '../config.js';
-import { ecdCall } from './aliyun.js';
+import { rpcCall, ecdCall, expandArray } from './aliyun.js';
 import { track, trackCost } from '../metrics.js';
 import { log } from '../log.js';
 import { agentEvent, tvCommand } from '../protocol.js';
@@ -13,7 +13,7 @@ export function available() {
 }
 
 export async function desktopStatus() {
-  const data = await ecdCall('DescribeDesktops', { 'DesktopId.1': config.wuying.desktopId });
+  const data = await ecdCall('DescribeDesktops', expandArray('DesktopId', [config.wuying.desktopId]));
   const d = data.Desktops?.[0];
   return d ? { id: d.DesktopId, status: d.DesktopStatus, name: d.DesktopName } : null;
 }
@@ -23,7 +23,7 @@ export async function ensureRunning() {
   if (!st) throw new Error('desktop_not_found');
   if (st.status === 'Running') return st;
   if (st.status === 'Stopped') {
-    await ecdCall('StartDesktops', { 'DesktopId.1': config.wuying.desktopId });
+    await ecdCall('StartDesktops', expandArray('DesktopId', [config.wuying.desktopId]));
     track('cua', 'desktop_start', {});
     // 冷启动 ≤8s 是产品目标（10.1）；API 层轮询到 Running
     for (let i = 0; i < 30; i++) {
@@ -37,9 +37,10 @@ export async function ensureRunning() {
 }
 
 // 在云桌面内执行 PowerShell（部署 cua-agent、取产物、应急操作）
+// 走 POST：脚本 Base64 后可达 16KB，GET 查询串会 414 超长。
 export async function runPowerShell(script, { timeoutS = 120 } = {}) {
   const data = await ecdCall('RunCommand', {
-    'DesktopId.1': config.wuying.desktopId,
+    ...expandArray('DesktopId', [config.wuying.desktopId]),
     Type: 'RunPowerShellScript',
     CommandContent: Buffer.from(script, 'utf8').toString('base64'),
     ContentEncoding: 'Base64',
@@ -60,12 +61,15 @@ export async function runPowerShell(script, { timeoutS = 120 } = {}) {
 }
 
 // 串流 Ticket：电视端接入无影 Web SDK 拉流用（TV-02）。
-// 说明：GetConnectionTicket 需要终端用户凭证体系配合，正式接入按无影 Web SDK 文档联调。
-export async function getConnectionTicket(endUserId) {
-  return ecdCall('GetConnectionTicket', {
+// 官方参数（docs/api-meta/ecd-2020-09-30.json）：RegionId 必填，DesktopId + EndUserId + Password
+// 用于生成凭证；返回的 Ticket 交给 Web SDK 建连。
+export async function getConnectionTicket({ endUserId, password } = {}) {
+  const d = await ecdCall('GetConnectionTicket', {
     DesktopId: config.wuying.desktopId,
-    EndUserId: endUserId,
+    EndUserId: endUserId || config.wuying.endUserId,
+    Password: password || config.wuying.password,
   });
+  return { ticket: d.Ticket, taskId: d.TaskId, taskStatus: d.TaskStatus };
 }
 
 // ---- 内容生产（5.6.1 ④ 云桌面制作）：PowerShell + PowerPoint COM 自动化逐页生成 ----
